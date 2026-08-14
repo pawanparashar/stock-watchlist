@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 680" role="img">
+  <title>PawanRadar logo</title>
+  <desc>A circular navy badge with a gold ascending swing-trading price line crossing above a dashed benchmark line representing the S&amp;P 500, topped by a green pennant flag bearing the letter P, with a small gold spark at the peak.</desc>
+  <circle cx="340" cy="340" r="320" fill="#16213E"/>
+  <line x1="100" y1="440" x2="580" y2="440" stroke="#5B6B8C" stroke-width="4" stroke-dasharray="12 12"/>
+  <polyline points="120,510 210,410 260,470 340,320 395,375 480,235 545,185" fill="none" stroke="#EF9F27" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="545" y1="185" x2="545" y2="90" stroke="#EAF3DE" stroke-width="9" stroke-linecap="round"/>
+  <polygon points="545,90 630,118 545,146" fill="#3DAA55"/>
+  <text x="583" y="123" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-weight="700" font-size="40" fill="#FBFAF7">P</text>
+  <g fill="#EF9F27">
+    <circle cx="612" cy="66" r="7"/>
+    <circle cx="636" cy="88" r="4"/>
+  </g>
+  <g stroke="#5B6B8C" stroke-width="5" stroke-linecap="round">
+    <line x1="220" y1="565" x2="220" y2="588"/>
+    <line x1="270" y1="565" x2="270" y2="588"/>
+    <line x1="320" y1="565" x2="320" y2="588"/>
+    <line x1="370" y1="565" x2="370" y2="588"/>
+    <line x1="420" y1="565" x2="420" y2="588"/>
+  </g>
+</svg>
