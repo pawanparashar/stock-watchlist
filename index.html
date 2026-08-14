@@ -4,85 +4,86 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>My Watchlist</title>
-  <style>
+    <style>
       :root {
-            --border: #E4E1D8;
-            --text-primary: #2B2A27;
-            --text-secondary: #6B6A63;
-            --text-muted: #9B9A93;
-            --radius: 8px;
+        --border: #E4E1D8;
+        --text-primary: #2B2A27;
+        --text-secondary: #6B6A63;
+        --text-muted: #9B9A93;
+        --radius: 8px;
       }
       * { box-sizing: border-box; }
       body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-            background: #FBFAF7;
-            color: var(--text-primary);
-            margin: 0;
-            padding: 24px 16px 60px;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+        background: #FBFAF7;
+        color: var(--text-primary);
+        margin: 0;
+        padding: 24px 16px 60px;
       }
       .wrap { max-width: 760px; margin: 0 auto; }
       .header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 14px;
-            flex-wrap: wrap;
-            gap: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 14px;
+        flex-wrap: wrap;
+        gap: 10px;
       }
       .title { font-size: 18px; font-weight: 600; }
       .controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
       .updated { font-size: 12px; color: var(--text-muted); }
       select, button {
-            font-size: 13px;
-            font-family: inherit;
-            padding: 6px 10px;
-            border-radius: 6px;
-            border: 1px solid var(--border);
-            background: #fff;
-            color: var(--text-primary);
-            cursor: pointer;
+        font-size: 13px;
+        font-family: inherit;
+        padding: 6px 10px;
+        border-radius: 6px;
+        border: 1px solid var(--border);
+        background: #fff;
+        color: var(--text-primary);
+        cursor: pointer;
       }
       button#refreshBtn {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            background: #2B2A27;
-            color: #fff;
-            border: none;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: #2B2A27;
+        color: #fff;
+        border: none;
       }
       button#refreshBtn:disabled { opacity: 0.6; cursor: default; }
       #rows { display: flex; flex-direction: column; gap: 8px; }
       .card {
-            border: 1px solid var(--border);
-            border-left: 4px solid var(--border);
-            border-radius: var(--radius);
-            padding: 12px 14px;
-            background: #fff;
+        border: 1px solid var(--border);
+        border-left: 4px solid var(--border);
+        border-radius: var(--radius);
+        padding: 12px 14px;
+        background: #fff;
       }
       .card-head {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 8px;
       }
       .ticker-price { display: flex; align-items: baseline; gap: 10px; }
       .ticker { font-size: 16px; font-weight: 600; }
       .price { font-size: 15px; }
+      .atr-value { font-size: 11px; color: var(--text-muted); }
       .badge {
-            font-size: 12px;
-            font-weight: 500;
-            padding: 3px 10px;
-            border-radius: 12px;
+        font-size: 12px;
+        font-weight: 500;
+        padding: 3px 10px;
+        border-radius: 12px;
       }
       .no-signal { font-size: 12px; color: var(--text-muted); }
       .badges-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
-      .indicator-badge { font-size: 11px; padding: 3px 9px; border-radius: 12px; }
+      .indicator-badge { font-size: 11px; padding: 3px 9px; border-radius: 12px; white-space: nowrap; }
       .windows-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
-            gap: 10px;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
+        gap: 10px;
       }
       .win-label { font-size: 11px; color: var(--text-muted); margin-bottom: 2px; }
       .win-low { font-size: 13px; }
@@ -97,90 +98,120 @@
   </head>
   <body>
     <div class="wrap">
-        <div class="header">
-              <span class="title">My Watchlist</span>span>
-              <div class="controls">
-                      <span class="updated" id="updatedLabel">Not loaded yet</span>span>
-                      <select id="sortSel">
-                                <option value="severity">Sort: biggest dip first</option>option>
-                                <option value="ticker">Sort: ticker A-Z</option>option>
-                                <option value="price">Sort: price high to low</option>option>
-                      </select>select>
-                      <button id="refreshBtn">Refresh</button>button>
-              </div>div>
-        </div>div>
+      <div class="header">
+        <span class="title">My Watchlist</span>
+        <div class="controls">
+          <span class="updated" id="updatedLabel">Not loaded yet</span>
+          <select id="sortSel">
+            <option value="severity">Sort: biggest dip first</option>
+            <option value="ticker">Sort: ticker A-Z</option>
+            <option value="price">Sort: price high to low</option>
+          </select>
+          <button id="refreshBtn">Refresh</button>
+        </div>
+      </div>
 
-        <div class="legend">
-              <span><span class="swatch" style="background:#FAEEDA;"></span>below 7d low</span>
-            <span><span class="swatch" style="background:#FAC775;"></span>below 15d low</span>
-            <span><span class="swatch" style="background:#EF9F27;"></span>below 30d low</span>
-            <span><span class="swatch" style="background:#BA7517;"></span>below 90d low</span>
-            <span><span class="swatch" style="background:#F7C1C1;"></span>below 180d low</span>
-            <span><span class="swatch" style="background:#E24B4A;"></span>below 365d low</span>
-        </div>div>
-    
+      <div class="legend">
+        <span><span class="swatch" style="background:#FAEEDA;"></span>below 7d low</span>
+        <span><span class="swatch" style="background:#FAC775;"></span>below 15d low</span>
+        <span><span class="swatch" style="background:#EF9F27;"></span>below 30d low</span>
+        <span><span class="swatch" style="background:#BA7517;"></span>below 90d low</span>
+        <span><span class="swatch" style="background:#F7C1C1;"></span>below 180d low</span>
+        <span><span class="swatch" style="background:#E24B4A;"></span>below 365d low</span>
+      </div>
+
       <div id="rows">
-          <div class="empty-state">Click Refresh to load your watchlist.</div>div>
-      </div>div>
-    </div>div>
-  
-  <script>
-    // ---- Configuration ----
-    var TICKERS = ["AAPL","NVDA","GOOGL","AMZN","GOOG","AVGO","META","TSLA","MU","AMD","INTC","CAT","NFLX","SPCX","CRM","NOW","PANW"];
-    var WORKER_URL = "https://stock-watchlist-proxy.pawan227.workers.dev/";
+        <div class="empty-state">Click Refresh to load your watchlist.</div>
+      </div>
+    </div>
 
-    var COLS = ["7d","15d","30d","90d","180d","365d"];
-    var STYLE = {
+    <script>
+      // ---- Configuration ----
+      var TICKERS = ["AAPL","NVDA","GOOGL","AMZN","GOOG","AVGO","META","TSLA","MU","AMD","INTC","CAT","NFLX","SPCX","CRM","NOW","PANW"];
+      var WORKER_URL = "https://stock-watchlist-proxy.pawan227.workers.dev/";
+
+      var COLS = ["7d","15d","30d","90d","180d","365d"];
+      var STYLE = {
         "7d":   { border: "#EF9F27", bg: "#FAEEDA", text: "#633806", label: "Below 7d low",   rank: 1 },
         "15d":  { border: "#EF9F27", bg: "#FAC775", text: "#633806", label: "Below 15d low",  rank: 2 },
         "30d":  { border: "#BA7517", bg: "#EF9F27", text: "#412402", label: "Below 30d low",  rank: 3 },
         "90d":  { border: "#854F0B", bg: "#BA7517", text: "#FAEEDA", label: "Below 90d low",  rank: 4 },
         "180d": { border: "#A32D2D", bg: "#F7C1C1", text: "#501313", label: "Below 180d low", rank: 5 },
         "365d": { border: "#791F1F", bg: "#E24B4A", text: "#FCEBEB", label: "Below 365d low", rank: 6 }
-    };
+      };
 
-    var lastData = [];
+      var lastData = [];
 
-    function deepestOf(row) {
+      function deepestOf(row) {
         var deepest = null;
         for (var i = 0; i < COLS.length; i++) {
-              var c = COLS[i];
-              var w = row.windows ? row.windows[c] : null;
-              if (w && row.price < w.low) deepest = c;
+          var c = COLS[i];
+          var w = row.windows ? row.windows[c] : null;
+          if (w && row.price < w.low) deepest = c;
         }
         return deepest;
-    }
+      }
 
-    function rsiBadgeHtml(rsi) {
+      function fmt(n) {
+        if (n === null || n === undefined || isNaN(n)) return "—";
+        return "$" + n.toFixed(2);
+      }
+
+      // ---- Indicator badges ----
+
+      function rsiBadgeHtml(rsi) {
         if (rsi === null || rsi === undefined) return "";
         var bg = "#F1EFE8", text = "#444441", label = "RSI " + rsi;
         if (rsi <= 30) { bg = "#EAF3DE"; text = "#27500A"; label = "RSI " + rsi + " oversold"; }
         else if (rsi >= 70) { bg = "#FAEEDA"; text = "#633806"; label = "RSI " + rsi + " overbought"; }
         return '<span class="indicator-badge" style="background:' + bg + ';color:' + text + ';">' + label + '</span>';
-    }
+      }
 
-    function trendBadgeHtml(trend) {
+      function trendBadgeHtml(trend) {
         if (!trend) return "";
         var up = trend === "up";
         var bg = up ? "#EAF3DE" : "#FCEBEB";
         var text = up ? "#27500A" : "#501313";
         return '<span class="indicator-badge" style="background:' + bg + ';color:' + text + ';">' + (up ? "Uptrend" : "Downtrend") + '</span>';
-    }
+      }
 
-    function volBadgeHtml(relVol) {
+      function volBadgeHtml(relVol) {
         if (relVol === null || relVol === undefined || relVol < 1.5) return "";
         return '<span class="indicator-badge" style="background:#E6F1FB;color:#042C53;">' + relVol.toFixed(1) + 'x volume</span>';
-    }
+      }
 
-    function fmt(n) {
-        if (n === null || n === undefined || isNaN(n)) return "—";
-        return "$" + n.toFixed(2);
-    }
+      function macdBadgeHtml(macd) {
+        if (!macd) return "";
+        var bg = macd.bullish ? "#EAF3DE" : "#FCEBEB";
+        var text = macd.bullish ? "#27500A" : "#501313";
+        return '<span class="indicator-badge" style="background:' + bg + ';color:' + text + ';">MACD ' + (macd.bullish ? "bullish" : "bearish") + '</span>';
+      }
 
-    function buildCard(row) {
+      function adxBadgeHtml(adx) {
+        if (!adx || !adx.strong) return "";
+        return '<span class="indicator-badge" style="background:#EDE7F6;color:#3B2A66;">Strong trend (ADX ' + adx.value + ')</span>';
+      }
+
+      function supertrendBadgeHtml(st) {
+        if (!st) return "";
+        var up = st.direction === "up";
+        var bg = up ? "#EAF3DE" : "#FCEBEB";
+        var text = up ? "#27500A" : "#501313";
+        return '<span class="indicator-badge" style="background:' + bg + ';color:' + text + ';">Supertrend ' + (up ? "▲" : "▼") + ' ' + fmt(st.value) + '</span>';
+      }
+
+      function bbandsBadgeHtml(bb) {
+        if (!bb || !bb.breach) return "";
+        var upper = bb.breach === "upper";
+        var bg = upper ? "#FAEEDA" : "#EAF3DE";
+        var text = upper ? "#633806" : "#27500A";
+        return '<span class="indicator-badge" style="background:' + bg + ';color:' + text + ';">' + (upper ? "Above upper band" : "Below lower band") + '</span>';
+      }
+
+      function buildCard(row) {
         if (row.error) {
-              return '<div class="card"><div class="card-head"><span class="ticker">' + row.symbol +
-                      '</span><span class="error-card">' + row.error + '</span></div></div>';
+          return '<div class="card"><div class="card-head"><span class="ticker">' + row.symbol +
+            '</span><span class="error-card">' + row.error + '</span></div></div>';
         }
 
         var deepest = deepestOf(row);
@@ -188,38 +219,48 @@
         var borderColor = s ? s.border : "var(--border)";
 
         var head = '<div class="card-head">' +
-              '<div class="ticker-price"><span class="ticker">' + row.symbol + '</span>' +
-              '<span class="price">' + fmt(row.price) + '</span></div>';
+          '<div class="ticker-price"><span class="ticker">' + row.symbol + '</span>' +
+          '<span class="price">' + fmt(row.price) + '</span>' +
+          (row.atr !== null && row.atr !== undefined ? '<span class="atr-value">ATR ' + fmt(row.atr) + '</span>' : '') +
+          '</div>';
         if (s) {
-              head += '<span class="badge" style="background:' + s.bg + ';color:' + s.text + ';">' + s.label + '</span>';
+          head += '<span class="badge" style="background:' + s.bg + ';color:' + s.text + ';">' + s.label + '</span>';
         } else {
-              head += '<span class="no-signal">No new low</span>';
+          head += '<span class="no-signal">No new low</span>';
         }
         head += '</div>';
 
-        var badges = '<div class="badges-row">' + rsiBadgeHtml(row.rsi) + trendBadgeHtml(row.trend) + volBadgeHtml(row.relVol) + '</div>';
+        var badges = '<div class="badges-row">' +
+          rsiBadgeHtml(row.rsi) +
+          trendBadgeHtml(row.trend) +
+          volBadgeHtml(row.relVol) +
+          macdBadgeHtml(row.macd) +
+          adxBadgeHtml(row.adx) +
+          supertrendBadgeHtml(row.supertrend) +
+          bbandsBadgeHtml(row.bbands) +
+          '</div>';
 
         var grid = '<div class="windows-grid">';
         for (var i = 0; i < COLS.length; i++) {
-              var c = COLS[i];
-              var w = row.windows ? row.windows[c] : null;
-              grid += '<div><div class="win-label">' + c + '</div>';
-              if (!w) {
-                      grid += '<div class="win-na">insufficient history</div>';
-              } else {
-                      var broken = row.price < w.low;
-                      var lowColor = broken ? STYLE[c].border : "var(--text-primary)";
-                      grid += '<div class="win-low" style="font-weight:' + (broken ? "600" : "400") + ';color:' + lowColor + ';">L ' + fmt(w.low) + '</div>';
-                      grid += '<div class="win-high">H ' + fmt(w.high) + '</div>';
-              }
-              grid += '</div>';
+          var c = COLS[i];
+          var w = row.windows ? row.windows[c] : null;
+          grid += '<div><div class="win-label">' + c + '</div>';
+          if (!w) {
+            grid += '<div class="win-na">insufficient history</div>';
+          } else {
+            var broken = row.price < w.low;
+            var lowColor = broken ? STYLE[c].border : "var(--text-primary)";
+            grid += '<div class="win-low" style="font-weight:' + (broken ? "600" : "400") + ';color:' + lowColor + ';">L ' + fmt(w.low) + '</div>';
+            grid += '<div class="win-high">H ' + fmt(w.high) + '</div>';
+          }
+          grid += '</div>';
         }
         grid += '</div>';
 
         return '<div class="card" style="border-left-color:' + borderColor + ';">' + head + badges + grid + '</div>';
-    }
+      }
 
-    function render(sortBy) {
+      function render(sortBy) {
         var container = document.getElementById("rows");
         if (!lastData.length) return;
 
@@ -227,83 +268,57 @@
         rows.forEach(function (r) { r._deepest = r.error ? null : deepestOf(r); });
 
         if (sortBy === "severity") {
-              rows.sort(function (a, b) {
-                      var rankA = a._deepest ? STYLE[a._deepest].rank : 0;
-                      var rankB = b._deepest ? STYLE[b._deepest].rank : 0;
-                      return rankB - rankA;
-              });
+          rows.sort(function (a, b) {
+            var rankA = a._deepest ? STYLE[a._deepest].rank : 0;
+            var rankB = b._deepest ? STYLE[b._deepest].rank : 0;
+            return rankB - rankA;
+          });
         } else if (sortBy === "ticker") {
-              rows.sort(function (a, b) { return a.symbol.localeCompare(b.symbol); });
+          rows.sort(function (a, b) { return a.symbol.localeCompare(b.symbol); });
         } else if (sortBy === "price") {
-              rows.sort(function (a, b) { return (b.price || 0) - (a.price || 0); });
+          rows.sort(function (a, b) { return (b.price || 0) - (a.price || 0); });
         }
 
         container.innerHTML = rows.map(buildCard).join("");
-    }
+      }
 
-    function setLoading(isLoading) {
+      function setLoading(isLoading) {
         var btn = document.getElementById("refreshBtn");
         btn.disabled = isLoading;
         btn.textContent = isLoading ? "Refreshing…" : "Refresh";
-    }
+      }
 
-    function chunk(arr, size) {
-        var out = [];
-        for (var i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
-        return out;
-    }
-
-    // Twelve Data's free tier allows 8 requests per minute. We batch tickers into
-    // groups of 8 and pace one batch per minute so we never hit that limit.
-    var BATCH_SIZE = 8;
-    var BATCH_DELAY_MS = 61000;
-
-    function loadData() {
+      function loadData() {
         setLoading(true);
         lastData = [];
         document.getElementById("rows").innerHTML = '<div class="empty-state">Loading…</div>';
+        document.getElementById("updatedLabel").textContent = "Loading…";
 
-        var batches = chunk(TICKERS, BATCH_SIZE);
-        var batchIndex = 0;
+        var url = WORKER_URL + "?symbols=" + encodeURIComponent(TICKERS.join(","));
+        fetch(url)
+          .then(function (res) {
+            if (!res.ok) throw new Error("Request failed: " + res.status);
+            return res.json();
+          })
+          .then(function (json) {
+            if (json.error) throw new Error(json.error);
+            lastData = json.data || [];
+            render(document.getElementById("sortSel").value);
+            document.getElementById("updatedLabel").textContent = "Updated " + new Date().toLocaleTimeString();
+            setLoading(false);
+          })
+          .catch(function (err) {
+            document.getElementById("rows").innerHTML =
+              '<div class="empty-state">Could not load data: ' + err.message + '</div>';
+            document.getElementById("updatedLabel").textContent = "Not loaded yet";
+            setLoading(false);
+          });
+      }
 
-        function runBatch() {
-              var batch = batches[batchIndex];
-              var label = batches.length > 1
-                ? "Loading " + (batchIndex + 1) + "/" + batches.length + " (free-tier pacing)…"
-                      : "Loading…";
-              document.getElementById("updatedLabel").textContent = label;
-
-              var url = WORKER_URL + "?symbols=" + encodeURIComponent(batch.join(","));
-              fetch(url)
-                .then(function (res) {
-                          if (!res.ok) throw new Error("Request failed: " + res.status);
-                          return res.json();
-                })
-                .then(function (json) {
-                          lastData = lastData.concat(json.data || []);
-                          render(document.getElementById("sortSel").value);
-                          batchIndex++;
-                          if (batchIndex < batches.length) {
-                                      setTimeout(runBatch, BATCH_DELAY_MS);
-                          } else {
-                                      document.getElementById("updatedLabel").textContent = "Updated " + new Date().toLocaleTimeString();
-                                      setLoading(false);
-                          }
-                })
-                .catch(function (err) {
-                          document.getElementById("rows").innerHTML =
-                                      '<div class="empty-state">Could not load data: ' + err.message + '</div>';
-                          setLoading(false);
-                });
-        }
-
-        runBatch();
-    }
-
-    document.getElementById("refreshBtn").addEventListener("click", loadData);
-    document.getElementById("sortSel").addEventListener("change", function (e) {
+      document.getElementById("refreshBtn").addEventListener("click", loadData);
+      document.getElementById("sortSel").addEventListener("change", function (e) {
         render(e.target.value);
-    });
-  </script>
+      });
+    </script>
   </body>
 </html>
