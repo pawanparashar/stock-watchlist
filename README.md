@@ -51,8 +51,34 @@ today's price fell outside that prior range). A window shows "insufficient
 history" if the ticker doesn't have enough daily bars yet (e.g. a recent
 IPO) — that's expected, not a bug.
 
+**Signal badge — Strong Buy / Buy / Hold / Sell / Strong Sell**
+A single composite read, right under the price/ATR line. It's computed
+client-side (in `index.html`, not the Worker) from the same badges on the
+card — nothing extra is fetched for it. It's a summary of what the other
+badges already say, not an independent signal, and it's specifically
+weighted toward this page's original "spot the dip" philosophy — treat it as
+a prompt to go read the actual badges, not something to act on blindly.
+
+Scoring (`computeSignal` in index.html):
+
+| Signal | Vote |
+|---|---|
+| Low-break depth | +1 (7d/15d), +2 (30d/90d), +3 (180d/365d) |
+| RSI ≤30 / ≥70 | +1 / −1 |
+| Trend (EMA20 vs 50) | +1 up / −1 down |
+| MACD | +1 bullish / −1 bearish |
+| Supertrend | +1 up / −1 down |
+| Bollinger breach | +1 below lower band / −1 above upper band |
+| ADX >25 | no vote of its own — pushes the total 1 point further in whichever direction it already leans |
+| RelVol, ATR | not scored — context only (conviction, volatility) |
+
+Total score → label: ≥5 Strong Buy, ≥2 Buy, ≥−1 Hold, ≥−4 Sell, else Strong
+Sell. To change the weights or thresholds, edit `SIGNAL_TIERS` and
+`LOW_BREAK_VOTE` in `index.html`.
+
 **Sort dropdown** — biggest dip first (default, ranks by deepest broken
-window) / ticker A-Z / price high to low.
+window) / strongest buy first (ranks by the signal badge) / ticker A-Z /
+price high to low.
 
 ## Adding or removing tickers
 
