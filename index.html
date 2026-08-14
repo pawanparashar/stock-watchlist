@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>PawanRadar</title>
+    <title>Parashar Radar</title>
     <link rel="icon" type="image/svg+xml" href="assets/logo.svg" />
     <style>
       :root {
@@ -31,7 +31,8 @@
       }
       .title-group { display: flex; align-items: center; gap: 12px; }
       .logo-icon { width: 44px; height: 44px; flex-shrink: 0; border-radius: 50%; }
-      .title { font-size: 28px; font-weight: 700; }
+      .title { font-size: 28px; font-weight: 700; margin: 0; }
+      .subtitle { font-size: 13px; color: var(--text-secondary); margin: 2px 0 0; }
       .controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
       .updated { font-size: 12px; color: var(--text-muted); }
       select, button {
@@ -104,7 +105,10 @@
       <div class="header">
         <div class="title-group">
           <img src="assets/logo.svg" alt="" class="logo-icon" />
-          <span class="title">PawanRadar</span>
+          <div>
+            <h1 class="title">Parashar Radar</h1>
+            <p class="subtitle">Precision Swing-Trading Intelligence for Top S&amp;P Mega-Caps</p>
+          </div>
         </div>
         <div class="controls">
           <span class="updated" id="updatedLabel">Not loaded yet</span>
