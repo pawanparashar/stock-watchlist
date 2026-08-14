@@ -78,6 +78,7 @@
         border-radius: 12px;
       }
       .no-signal { font-size: 12px; color: var(--text-muted); }
+      .signal-badge { display: inline-block; font-size: 13px; font-weight: 700; padding: 5px 14px; border-radius: 14px; margin-bottom: 10px; }
       .badges-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
       .indicator-badge { font-size: 11px; padding: 3px 9px; border-radius: 12px; white-space: nowrap; }
       .windows-grid {
@@ -104,6 +105,7 @@
           <span class="updated" id="updatedLabel">Not loaded yet</span>
           <select id="sortSel">
             <option value="severity">Sort: biggest dip first</option>
+            <option value="signal">Sort: strongest buy first</option>
             <option value="ticker">Sort: ticker A-Z</option>
             <option value="price">Sort: price high to low</option>
           </select>
@@ -141,6 +143,50 @@
       };
 
       var lastData = [];
+
+      // Composite Strong Buy..Strong Sell signal, scored from the same badges shown
+      // on the card. Not a recommendation to act on blindly — a summary of what the
+      // other badges already say, weighted toward the "dip" philosophy of this page.
+      var SIGNAL_TIERS = [
+        { min: 5,           label: "Strong Buy",  bg: "#B7DDAC", text: "#1B4D0F", rank: 5 },
+        { min: 2,           label: "Buy",         bg: "#EAF3DE", text: "#27500A", rank: 4 },
+        { min: -1,          label: "Hold",        bg: "#F1EFE8", text: "#6B6A63", rank: 3 },
+        { min: -4,          label: "Sell",        bg: "#FCEBEB", text: "#501313", rank: 2 },
+        { min: -Infinity,   label: "Strong Sell", bg: "#E9A6A6", text: "#4A0A0A", rank: 1 }
+      ];
+      var LOW_BREAK_VOTE = { "7d": 1, "15d": 1, "30d": 2, "90d": 2, "180d": 3, "365d": 3 };
+
+      function computeSignal(row) {
+        if (row.error) return null;
+        var score = 0;
+
+        var deepest = deepestOf(row);
+        if (deepest) score += LOW_BREAK_VOTE[deepest];
+
+        if (row.rsi !== null && row.rsi !== undefined) {
+          if (row.rsi <= 30) score += 1;
+          else if (row.rsi >= 70) score -= 1;
+        }
+        if (row.trend === "up") score += 1;
+        else if (row.trend === "down") score -= 1;
+        if (row.macd) score += row.macd.bullish ? 1 : -1;
+        if (row.supertrend) score += row.supertrend.direction === "up" ? 1 : -1;
+        if (row.bbands && row.bbands.breach === "lower") score += 1;
+        else if (row.bbands && row.bbands.breach === "upper") score -= 1;
+
+        // ADX doesn't vote on direction, it amplifies whichever way the score already leans.
+        if (row.adx && row.adx.strong) score += score > 0 ? 1 : (score < 0 ? -1 : 0);
+
+        for (var i = 0; i < SIGNAL_TIERS.length; i++) {
+          if (score >= SIGNAL_TIERS[i].min) return SIGNAL_TIERS[i];
+        }
+        return SIGNAL_TIERS[SIGNAL_TIERS.length - 1];
+      }
+
+      function signalBadgeHtml(signal) {
+        if (!signal) return "";
+        return '<span class="signal-badge" style="background:' + signal.bg + ';color:' + signal.text + ';">' + signal.label + '</span>';
+      }
 
       function deepestOf(row) {
         var deepest = null;
@@ -230,6 +276,9 @@
         }
         head += '</div>';
 
+        var signal = computeSignal(row);
+        var signalRow = signal ? '<div>' + signalBadgeHtml(signal) + '</div>' : '';
+
         var badges = '<div class="badges-row">' +
           rsiBadgeHtml(row.rsi) +
           trendBadgeHtml(row.trend) +
@@ -257,7 +306,7 @@
         }
         grid += '</div>';
 
-        return '<div class="card" style="border-left-color:' + borderColor + ';">' + head + badges + grid + '</div>';
+        return '<div class="card" style="border-left-color:' + borderColor + ';">' + head + signalRow + badges + grid + '</div>';
       }
 
       function render(sortBy) {
@@ -271,6 +320,12 @@
           rows.sort(function (a, b) {
             var rankA = a._deepest ? STYLE[a._deepest].rank : 0;
             var rankB = b._deepest ? STYLE[b._deepest].rank : 0;
+            return rankB - rankA;
+          });
+        } else if (sortBy === "signal") {
+          rows.sort(function (a, b) {
+            var rankA = a.error ? 0 : computeSignal(a).rank;
+            var rankB = b.error ? 0 : computeSignal(b).rank;
             return rankB - rankA;
           });
         } else if (sortBy === "ticker") {
