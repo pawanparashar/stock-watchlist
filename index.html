@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>PawanRadar</title>
+    <link rel="icon" type="image/svg+xml" href="assets/logo.svg" />
     <style>
       :root {
         --border: #E4E1D8;
@@ -29,6 +30,8 @@
         flex-wrap: wrap;
         gap: 10px;
       }
+      .title-group { display: flex; align-items: center; gap: 8px; }
+      .logo-icon { width: 26px; height: 26px; flex-shrink: 0; border-radius: 50%; }
       .title { font-size: 18px; font-weight: 600; }
       .controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
       .updated { font-size: 12px; color: var(--text-muted); }
@@ -100,7 +103,10 @@
   <body>
     <div class="wrap">
       <div class="header">
-        <span class="title">PawanRadar</span>
+        <div class="title-group">
+          <img src="assets/logo.svg" alt="" class="logo-icon" />
+          <span class="title">PawanRadar</span>
+        </div>
         <div class="controls">
           <span class="updated" id="updatedLabel">Not loaded yet</span>
           <select id="sortSel">
@@ -120,6 +126,14 @@
         <span><span class="swatch" style="background:#BA7517;"></span>below 90d low</span>
         <span><span class="swatch" style="background:#F7C1C1;"></span>below 180d low</span>
         <span><span class="swatch" style="background:#E24B4A;"></span>below 365d low</span>
+      </div>
+      <div class="legend">
+        <span><span class="swatch" style="background:#E6F1FB;"></span>above 7d high</span>
+        <span><span class="swatch" style="background:#B9D9F5;"></span>above 15d high</span>
+        <span><span class="swatch" style="background:#7FB8E6;"></span>above 30d high</span>
+        <span><span class="swatch" style="background:#4A93D1;"></span>above 90d high</span>
+        <span><span class="swatch" style="background:#1E5C96;"></span>above 180d high</span>
+        <span><span class="swatch" style="background:#0D3E68;"></span>above 365d high</span>
       </div>
 
       <div id="rows">
@@ -142,6 +156,18 @@
         "365d": { border: "#791F1F", bg: "#E24B4A", text: "#FCEBEB", label: "Below 365d low", rank: 6 }
       };
 
+      // Mirrors STYLE, but for breakouts above a window's high. Blue so it never
+      // gets confused with the amber-to-red "dip" ramp above, which is a different
+      // signal (buying opportunity vs. take-profit/extended).
+      var HIGH_STYLE = {
+        "7d":   { border: "#4A93D1", bg: "#E6F1FB", text: "#0D3E68", label: "Above 7d high",   rank: 1 },
+        "15d":  { border: "#2F7FCB", bg: "#B9D9F5", text: "#0D3E68", label: "Above 15d high",  rank: 2 },
+        "30d":  { border: "#1E6BB8", bg: "#7FB8E6", text: "#0B2540", label: "Above 30d high",  rank: 3 },
+        "90d":  { border: "#14568F", bg: "#4A93D1", text: "#FBFAF7", label: "Above 90d high",  rank: 4 },
+        "180d": { border: "#0D3E68", bg: "#1E5C96", text: "#FBFAF7", label: "Above 180d high", rank: 5 },
+        "365d": { border: "#082A47", bg: "#0D3E68", text: "#FBFAF7", label: "Above 365d high", rank: 6 }
+      };
+
       var lastData = [];
 
       // Composite Strong Buy..Strong Sell signal, scored from the same badges shown
@@ -155,6 +181,7 @@
         { min: -Infinity,   label: "Strong Sell", bg: "#E9A6A6", text: "#4A0A0A", rank: 1 }
       ];
       var LOW_BREAK_VOTE = { "7d": 1, "15d": 1, "30d": 2, "90d": 2, "180d": 3, "365d": 3 };
+      var HIGH_BREAK_VOTE = { "7d": -1, "15d": -1, "30d": -2, "90d": -2, "180d": -3, "365d": -3 };
 
       function computeSignal(row) {
         if (row.error) return null;
@@ -162,6 +189,10 @@
 
         var deepest = deepestOf(row);
         if (deepest) score += LOW_BREAK_VOTE[deepest];
+        else {
+          var deepestHigh = deepestHighOf(row);
+          if (deepestHigh) score += HIGH_BREAK_VOTE[deepestHigh];
+        }
 
         if (row.rsi !== null && row.rsi !== undefined) {
           if (row.rsi <= 30) score += 1;
@@ -194,6 +225,16 @@
           var c = COLS[i];
           var w = row.windows ? row.windows[c] : null;
           if (w && row.price < w.low) deepest = c;
+        }
+        return deepest;
+      }
+
+      function deepestHighOf(row) {
+        var deepest = null;
+        for (var i = 0; i < COLS.length; i++) {
+          var c = COLS[i];
+          var w = row.windows ? row.windows[c] : null;
+          if (w && row.price > w.high) deepest = c;
         }
         return deepest;
       }
@@ -261,7 +302,8 @@
         }
 
         var deepest = deepestOf(row);
-        var s = deepest ? STYLE[deepest] : null;
+        var deepestHigh = deepest ? null : deepestHighOf(row);
+        var s = deepest ? STYLE[deepest] : (deepestHigh ? HIGH_STYLE[deepestHigh] : null);
         var borderColor = s ? s.border : "var(--border)";
 
         var head = '<div class="card-head">' +
@@ -272,7 +314,7 @@
         if (s) {
           head += '<span class="badge" style="background:' + s.bg + ';color:' + s.text + ';">' + s.label + '</span>';
         } else {
-          head += '<span class="no-signal">No new low</span>';
+          head += '<span class="no-signal">No new low/high</span>';
         }
         head += '</div>';
 
@@ -297,10 +339,12 @@
           if (!w) {
             grid += '<div class="win-na">insufficient history</div>';
           } else {
-            var broken = row.price < w.low;
-            var lowColor = broken ? STYLE[c].border : "var(--text-primary)";
-            grid += '<div class="win-low" style="font-weight:' + (broken ? "600" : "400") + ';color:' + lowColor + ';">L ' + fmt(w.low) + '</div>';
-            grid += '<div class="win-high">H ' + fmt(w.high) + '</div>';
+            var brokenLow = row.price < w.low;
+            var brokenHigh = row.price > w.high;
+            var lowColor = brokenLow ? STYLE[c].border : "var(--text-primary)";
+            var highColor = brokenHigh ? HIGH_STYLE[c].border : "var(--text-secondary)";
+            grid += '<div class="win-low" style="font-weight:' + (brokenLow ? "600" : "400") + ';color:' + lowColor + ';">L ' + fmt(w.low) + '</div>';
+            grid += '<div class="win-high" style="font-weight:' + (brokenHigh ? "600" : "400") + ';color:' + highColor + ';">H ' + fmt(w.high) + '</div>';
           }
           grid += '</div>';
         }

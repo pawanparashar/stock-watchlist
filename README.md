@@ -16,11 +16,13 @@ through a Cloudflare Worker proxy (so the frontend never holds API keys).
 (a rough measure of daily price movement — handy for eyeballing a stop
 distance, e.g. `entry - 1.5x ATR`).
 
-**Top-right badge — "Below Nd low" / "No new low"**
-This is the headline signal: has today's price broken the lowest low of the
-last N days? If more than one window is broken, the badge shows the deepest
-one (the card's left border color matches it too). Darker/redder = a bigger,
-older low just got broken:
+**Top-right badge — "Below Nd low" / "Above Nd high" / "No new low/high"**
+The headline signal: has today's price broken outside the last N days'
+range? If more than one window is broken, the badge shows the deepest one
+(the card's left border color matches it too).
+
+Lows (amber → red) are the original "spot the dip" signal — darker/redder
+means a bigger, older low just got broken:
 
 | Badge | Meaning |
 |---|---|
@@ -31,8 +33,23 @@ older low just got broken:
 | Below 180d low | light red |
 | Below 365d low | dark red |
 
-This only tracks **lows**, not highs — the point is spotting dip-buying
-opportunities, not breakouts.
+Highs (light → dark blue) are the mirror-image "extended / consider taking
+profit" signal, added once this page started tracking sell-side signals too
+— darker blue means a bigger, older high just got broken:
+
+| Badge | Meaning |
+|---|---|
+| Above 7d high | light blue |
+| Above 15d high | blue |
+| Above 30d high | medium blue |
+| Above 90d high | darker blue |
+| Above 180d high | navy |
+| Above 365d high | dark navy |
+
+A ticker can only break one side on a given day, never both. Blue is used
+specifically so it never gets confused with the low-break ramp — same idea,
+opposite direction. In the windows grid at the bottom of each card, whichever
+side (L or H) got broken is bolded and colored to match.
 
 **Badges row** — secondary signals, only shown when relevant:
 
@@ -64,6 +81,7 @@ Scoring (`computeSignal` in index.html):
 | Signal | Vote |
 |---|---|
 | Low-break depth | +1 (7d/15d), +2 (30d/90d), +3 (180d/365d) |
+| High-break depth (only if no low break) | −1 (7d/15d), −2 (30d/90d), −3 (180d/365d) |
 | RSI ≤30 / ≥70 | +1 / −1 |
 | Trend (EMA20 vs 50) | +1 up / −1 down |
 | MACD | +1 bullish / −1 bearish |
@@ -86,7 +104,7 @@ Edit the `TICKERS` array near the top of the `<script>` block in
 [index.html](index.html):
 
 ```js
-var TICKERS = ["AAPL","NVDA","GOOGL","AMZN","GOOG","AVGO","META","TSLA","MU","AMD","INTC","CAT","NFLX","SPCX","CRM","NOW","PANW"];
+var TICKERS = ["AAPL","NVDA","GOOGL","AMZN","GOOG","AVGO","META","TSLA","MU","AMD","INTC","CAT","NFLX","SPCX","CRM","NOW","PANW","DOCU"];
 ```
 
 Add or remove symbols (they must be valid Alpaca/US-equity tickers), then
@@ -106,3 +124,5 @@ symbols the frontend asks for.
   trading account (market-data access only, no funding needed; the data API
   is identical between paper and live accounts).
 - **Deploy the Worker**: from `worker/`, run `npx wrangler deploy`.
+- **Logo**: [assets/logo.svg](assets/logo.svg), used as both the favicon and
+  the small icon next to the page title.
