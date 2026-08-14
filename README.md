@@ -124,5 +124,7 @@ symbols the frontend asks for.
   trading account (market-data access only, no funding needed; the data API
   is identical between paper and live accounts).
 - **Deploy the Worker**: from `worker/`, run `npx wrangler deploy`.
-- **Logo**: [assets/logo.svg](assets/logo.svg), used as both the favicon and
-  the small icon next to the page title.
+- **Branding**: [assets/logo-header.jpg](assets/logo-header.jpg) is the full
+  banner shown in place of a text title/header, cropped from a source brand
+  image. [assets/favicon.png](assets/favicon.png) is a 180x180 crop of the
+  icon mark alone, used as the browser-tab favicon.
