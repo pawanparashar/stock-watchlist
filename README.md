@@ -80,11 +80,3 @@ symbols the frontend asks for.
   trading account (market-data access only, no funding needed; the data API
   is identical between paper and live accounts).
 - **Deploy the Worker**: from `worker/`, run `npx wrangler deploy`.
-
-## Repo visibility
-
-This repo is public, which is required for free GitHub Pages hosting — the
-Free plan doesn't support Pages from a private repo (Pro/Team/Enterprise do,
-via a separate "Pages visibility" setting). Nothing sensitive lives in this
-repo either way: the Alpaca keys are Worker secrets, not code, and the
-ticker list isn't private information.
