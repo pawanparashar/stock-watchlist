@@ -85,6 +85,46 @@ function computeRelVol(volumes) {
   return round(volumes[last] / avg, 2);
 }
 
+// Slow stochastic (14,3,3): raw %K smoothed over 3 periods, %D is a 3-period
+// SMA of that smoothed %K. Reacts to the last few days far more than RSI(14),
+// which is what catches sharp 2-4 day reversals RSI is too slow to flag.
+function computeStochastic(highs, lows, closes, period, kSmooth, dSmooth) {
+  period = period || 14; kSmooth = kSmooth || 3; dSmooth = dSmooth || 3;
+  var n = closes.length;
+  if (n < period + kSmooth + dSmooth) return null;
+
+  var rawK = [];
+  for (var i = period - 1; i < n; i++) {
+    var hh = -Infinity, ll = Infinity;
+    for (var j = i - period + 1; j <= i; j++) {
+      if (highs[j] > hh) hh = highs[j];
+      if (lows[j] < ll) ll = lows[j];
+    }
+    var range = hh - ll;
+    rawK.push(range === 0 ? 50 : ((closes[i] - ll) / range) * 100);
+  }
+  if (rawK.length < kSmooth + dSmooth) return null;
+
+  function sma(values, p) {
+    var out = new Array(values.length).fill(null);
+    for (var i = p - 1; i < values.length; i++) {
+      var sum = 0;
+      for (var j = i - p + 1; j <= i; j++) sum += values[j];
+      out[i] = sum / p;
+    }
+    return out;
+  }
+
+  var slowK = sma(rawK, kSmooth);
+  var slowKvalues = slowK.filter(function (v) { return v !== null; });
+  var slowD = sma(slowKvalues, dSmooth);
+
+  var k = slowKvalues[slowKvalues.length - 1];
+  var d = slowD[slowD.length - 1];
+  if (k === undefined || d === null || d === undefined) return null;
+  return { k: round(k, 0), d: round(d, 0), oversold: k <= 20, overbought: k >= 80 };
+}
+
 function computeMACD(closes) {
   if (closes.length < 35) return null;
   var emaFast = emaSeries(closes, 12);
@@ -290,6 +330,9 @@ function computeRow(symbol, bars) {
 
   var bbands = computeBollinger(closes, 20, 2);
   row.bbands = bbands;
+
+  var stochastic = computeStochastic(highs, lows, closes, 14, 3, 3);
+  row.stochastic = stochastic;
 
   return row;
 }
