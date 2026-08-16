@@ -294,8 +294,8 @@ function computeRow(symbol, bars) {
   return row;
 }
 
-async function fetchAllBars(symbols, apiKeyId, apiSecret) {
-  var end = new Date();
+async function fetchAllBars(symbols, apiKeyId, apiSecret, endDateStr) {
+  var end = endDateStr ? new Date(endDateStr + "T23:59:59Z") : new Date();
   var start = new Date(end.getTime() - LOOKBACK_DAYS * 24 * 60 * 60 * 1000);
   var startStr = start.toISOString().slice(0, 10);
 
@@ -311,6 +311,7 @@ async function fetchAllBars(symbols, apiKeyId, apiSecret) {
     url.searchParams.set("symbols", symbols.join(","));
     url.searchParams.set("timeframe", "1Day");
     url.searchParams.set("start", startStr);
+    if (endDateStr) url.searchParams.set("end", endDateStr);
     url.searchParams.set("limit", "10000");
     url.searchParams.set("adjustment", "split");
     url.searchParams.set("sort", "asc");
@@ -367,14 +368,19 @@ export default {
       return jsonResponse({ error: "No valid symbols provided" }, 400);
     }
 
+    var endDateStr = url.searchParams.get("end");
+    if (endDateStr && !/^\d{4}-\d{2}-\d{2}$/.test(endDateStr)) {
+      return jsonResponse({ error: "end must be YYYY-MM-DD" }, 400);
+    }
+
     if (!env.ALPACA_API_KEY_ID || !env.ALPACA_API_SECRET_KEY) {
       return jsonResponse({ error: "Worker is missing Alpaca API credentials" }, 500);
     }
 
     try {
-      var barsBySymbol = await fetchAllBars(symbols, env.ALPACA_API_KEY_ID, env.ALPACA_API_SECRET_KEY);
+      var barsBySymbol = await fetchAllBars(symbols, env.ALPACA_API_KEY_ID, env.ALPACA_API_SECRET_KEY, endDateStr);
       var data = symbols.map(function (sym) { return computeRow(sym, barsBySymbol[sym]); });
-      return jsonResponse({ data: data, updated: new Date().toISOString() });
+      return jsonResponse({ data: data, updated: new Date().toISOString(), asOf: endDateStr || null });
     } catch (err) {
       return jsonResponse({ error: err.message || "Unknown error" }, 502);
     }
