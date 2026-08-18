@@ -135,7 +135,7 @@ Edit the `TICKERS` array near the top of the `<script>` block in
 [index.html](index.html):
 
 ```js
-var TICKERS = ["AAPL","NVDA","GOOGL","AMZN","GOOG","AVGO","META","TSLA","MU","AMD","INTC","CAT","NFLX","SPCX","CRM","NOW","PANW","DOCU","MSFT","PLTR","NBIS","SOFI"];
+var TICKERS = ["AAPL","NVDA","GOOGL","AMZN","GOOG","AVGO","META","TSLA","MU","AMD","INTC","CAT","NFLX","SPCX","CRM","NOW","PANW","DOCU","MSFT","PLTR","NBIS","SOFI","BABA"];
 ```
 
 Add or remove symbols (they must be valid Alpaca/US-equity tickers), then
