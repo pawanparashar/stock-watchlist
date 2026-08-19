@@ -79,9 +79,10 @@
       }
       .no-signal { font-size: 12px; color: var(--text-muted); }
       .signal-badge { display: inline-block; font-size: 13px; font-weight: 700; padding: 5px 14px; border-radius: 14px; margin-bottom: 10px; }
-      .sticker-row { font-size: 12px; margin-bottom: 10px; }
-      .sticker-label { font-weight: 600; padding: 2px 8px; border-radius: 10px; margin-left: 6px; }
-      .sticker-detail { color: var(--text-muted); }
+      .sticker-row { margin-bottom: 10px; }
+      .sticker-price-value { font-size: 14px; font-weight: 700; color: var(--text-primary); }
+      .sticker-label { font-weight: 600; font-size: 12px; padding: 2px 8px; border-radius: 10px; margin-left: 6px; }
+      .sticker-detail { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
       button#stickerBtn { background: #fff; }
       .sticker-meta { font-size: 11px; color: var(--text-muted); }
       .badges-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
@@ -210,9 +211,9 @@
         else { label = "Above sticker"; bg = "#FCEBEB"; text = "#501313"; }
 
         return '<div class="sticker-row">' +
-          '<span class="sticker-detail">Sticker ' + fmt(s.stickerPrice) + ' &middot; MOS ' + fmt(s.mosPrice) +
-          ' &middot; ' + s.growthRate + '% growth</span>' +
+          '<span class="sticker-price-value">Sticker ' + fmt(s.stickerPrice) + '</span>' +
           '<span class="sticker-label" style="background:' + bg + ';color:' + text + ';">' + label + '</span>' +
+          '<div class="sticker-detail">MOS ' + fmt(s.mosPrice) + ' &middot; ' + s.growthRate + '% growth</div>' +
           '</div>';
       }
 
