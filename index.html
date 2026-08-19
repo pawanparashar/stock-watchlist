@@ -220,6 +220,7 @@
         var btn = document.getElementById("stickerBtn");
         btn.disabled = true;
         btn.textContent = "Fetching fundamentals…";
+        document.getElementById("stickerMeta").textContent = "This can take 15-20s (one request per ticker to SEC EDGAR) — don't navigate away.";
 
         var url = WORKER_URL + "?symbols=" + encodeURIComponent(TICKERS.join(",")) + "&mode=sticker";
         fetch(url)
