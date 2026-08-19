@@ -79,6 +79,11 @@
       }
       .no-signal { font-size: 12px; color: var(--text-muted); }
       .signal-badge { display: inline-block; font-size: 13px; font-weight: 700; padding: 5px 14px; border-radius: 14px; margin-bottom: 10px; }
+      .sticker-row { font-size: 12px; margin-bottom: 10px; }
+      .sticker-label { font-weight: 600; padding: 2px 8px; border-radius: 10px; margin-left: 6px; }
+      .sticker-detail { color: var(--text-muted); }
+      button#stickerBtn { background: #fff; }
+      .sticker-meta { font-size: 11px; color: var(--text-muted); }
       .badges-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
       .indicator-badge { font-size: 11px; padding: 3px 9px; border-radius: 12px; white-space: nowrap; }
       .windows-grid {
@@ -110,6 +115,8 @@
             <option value="price">Sort: price high to low</option>
           </select>
           <button id="refreshBtn">Refresh</button>
+          <button id="stickerBtn">Update Fundamentals</button>
+          <span class="sticker-meta" id="stickerMeta"></span>
         </div>
       </div>
 
@@ -163,6 +170,79 @@
       };
 
       var lastData = [];
+
+      // Sticker Price (Rule #1 valuation) — deliberately decoupled from the daily
+      // Refresh flow. Fundamentals change quarterly, not daily, so this is only
+      // fetched when the user clicks "Update Fundamentals," then cached in
+      // localStorage and reused across page loads until they click it again.
+      var STICKER_STORAGE_KEY = "pawanradar_sticker_v1";
+      var stickerData = loadStickerData();
+
+      function loadStickerData() {
+        try {
+          var raw = localStorage.getItem(STICKER_STORAGE_KEY);
+          return raw ? JSON.parse(raw) : null;
+        } catch (e) {
+          return null;
+        }
+      }
+
+      function saveStickerData(obj) {
+        stickerData = obj;
+        try { localStorage.setItem(STICKER_STORAGE_KEY, JSON.stringify(obj)); } catch (e) {}
+      }
+
+      function updateStickerMeta() {
+        var el = document.getElementById("stickerMeta");
+        if (!stickerData || !stickerData.fetchedAt) { el.textContent = ""; return; }
+        el.textContent = "Fundamentals as of " + new Date(stickerData.fetchedAt).toLocaleDateString();
+      }
+
+      function stickerRowHtml(symbol) {
+        if (!stickerData || !stickerData.data) return "";
+        var s = stickerData.data[symbol];
+        if (!s || s.error) return "";
+
+        var price = s.currentPrice;
+        var label, bg, text;
+        if (price <= s.mosPrice) { label = "Bargain"; bg = "#EAF3DE"; text = "#27500A"; }
+        else if (price <= s.stickerPrice) { label = "Fair value"; bg = "#F1EFE8"; text = "#6B6A63"; }
+        else { label = "Above sticker"; bg = "#FCEBEB"; text = "#501313"; }
+
+        return '<div class="sticker-row">' +
+          '<span class="sticker-detail">Sticker ' + fmt(s.stickerPrice) + ' &middot; MOS ' + fmt(s.mosPrice) +
+          ' &middot; ' + s.growthRate + '% growth</span>' +
+          '<span class="sticker-label" style="background:' + bg + ';color:' + text + ';">' + label + '</span>' +
+          '</div>';
+      }
+
+      function loadStickerPrices() {
+        var btn = document.getElementById("stickerBtn");
+        btn.disabled = true;
+        btn.textContent = "Fetching fundamentals…";
+
+        var url = WORKER_URL + "?symbols=" + encodeURIComponent(TICKERS.join(",")) + "&mode=sticker";
+        fetch(url)
+          .then(function (res) {
+            if (!res.ok) throw new Error("Request failed: " + res.status);
+            return res.json();
+          })
+          .then(function (json) {
+            if (json.error) throw new Error(json.error);
+            var bySymbol = {};
+            (json.data || []).forEach(function (row) { bySymbol[row.symbol] = row; });
+            saveStickerData({ fetchedAt: new Date().toISOString(), data: bySymbol });
+            updateStickerMeta();
+            if (lastData.length) render(document.getElementById("sortSel").value);
+            btn.disabled = false;
+            btn.textContent = "Update Fundamentals";
+          })
+          .catch(function (err) {
+            btn.disabled = false;
+            btn.textContent = "Update Fundamentals";
+            document.getElementById("stickerMeta").textContent = "Could not load fundamentals: " + err.message;
+          });
+      }
 
       // Composite Strong Buy..Strong Sell signal, scored from the same badges shown
       // on the card. Not a recommendation to act on blindly — a summary of what the
@@ -379,7 +459,9 @@
         }
         grid += '</div>';
 
-        return '<div class="card" style="border-left-color:' + borderColor + ';">' + head + signalRow + badges + grid + '</div>';
+        var stickerRow = stickerRowHtml(row.symbol);
+
+        return '<div class="card" style="border-left-color:' + borderColor + ';">' + head + signalRow + badges + stickerRow + grid + '</div>';
       }
 
       function render(sortBy) {
@@ -444,9 +526,11 @@
       }
 
       document.getElementById("refreshBtn").addEventListener("click", loadData);
+      document.getElementById("stickerBtn").addEventListener("click", loadStickerPrices);
       document.getElementById("sortSel").addEventListener("change", function (e) {
         render(e.target.value);
       });
+      updateStickerMeta();
     </script>
   </body>
 </html>

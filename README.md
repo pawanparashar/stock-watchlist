@@ -129,6 +129,41 @@ Sell respectively.
 window) / strongest buy first (ranks by the signal badge) / ticker A-Z /
 price high to low.
 
+**Sticker Price / Margin of Safety** — a long-term value-investing check
+(Phil Town's Rule #1 methodology), shown as its own line under the badges
+when available: `Sticker $X · MOS $Y · Z% growth`, plus a Bargain / Fair
+value / Above sticker label comparing the current price to it. This is
+completely separate from everything else on the page:
+
+- It needs *fundamentals* (EPS, earnings growth, P/E), not price data, so
+  it's computed from **SEC EDGAR** filings (free, no API key), not Alpaca.
+- It only updates when you click **Update Fundamentals** — never on a
+  regular Refresh — since earnings change quarterly, not daily. Results are
+  cached in the browser's `localStorage` and persist across reloads until
+  you click it again; the "Fundamentals as of" label next to the button
+  shows how stale that cache is.
+- Method: pull annual diluted EPS from the company's 10-K filings, compute
+  a historical growth rate, project EPS 10 years forward, multiply by a
+  conservative future P/E (the lower of the stock's own historical average
+  P/E or 2× the growth rate), then discount back at a 15% required return.
+  Margin of Safety price is half of that.
+- **SEC's raw EPS figures are not split-adjusted** across a company's full
+  history — a stock that did a 5:1 split five years ago still shows
+  pre-split EPS in filings from before that split. The Worker detects this
+  automatically: it walks the EPS series backward from the most recent year
+  and stops (keeping only the more recent, internally-consistent segment)
+  at the first year-over-year jump outside a 0.4–2.5x range. This is why a
+  recently-split stock (e.g. NVDA post-2024) shows a short "years of data."
+- **Not every ticker will show a number, and that's intentional, not a
+  bug.** Companies with an unreliable/negative/too-short earnings trend
+  (recent IPOs, currently-unprofitable growth names, cyclical semis with
+  lumpy GAAP earnings) correctly show nothing rather than a misleading
+  sticker price — Rule One's method assumes smooth compounding growth,
+  which doesn't fit every company. Foreign private issuers that file
+  Form 20-F instead of a 10-K (e.g. BABA) aren't picked up at all yet.
+- This is one specific, fairly aggressive value-investing formula, not a
+  neutral fact — treat it as one more input, same as the technical signal.
+
 ## Adding or removing tickers
 
 Edit the `TICKERS` array near the top of the `<script>` block in

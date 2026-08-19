@@ -7,6 +7,20 @@ const ALPACA_BARS_URL = "https://data.alpaca.markets/v2/stocks/bars";
 const LOOKBACK_DAYS = 800; // calendar days; yields ~550 trading days, comfortably covering the 365d window + indicator warm-up
 const WINDOWS = [7, 15, 30, 90, 180, 365];
 
+// Sticker Price (Rule #1 / Phil Town style valuation) — a completely separate,
+// low-frequency path from the daily technical indicators above. Fundamentals
+// change quarterly, not daily, so this is only computed when the frontend
+// explicitly asks for mode=sticker, not on every Refresh click.
+const SEC_USER_AGENT = "PawanRadar pawan227@gmail.com";
+const SEC_TICKERS_URL = "https://www.sec.gov/files/company_tickers.json";
+const SEC_CONCEPT_URL = "https://data.sec.gov/api/xbrl/companyconcept/CIK{cik}/us-gaap/{tag}.json";
+const STICKER_LOOKBACK_DAYS = 3800; // ~10.4 years, for historical annual prices to pair with EPS years
+const MARR = 0.15; // Rule One's default minimum acceptable rate of return
+const PROJECTION_YEARS = 10;
+const MAX_GROWTH_RATE = 0.20; // conservative cap even if raw historical CAGR is higher
+const MAX_FUTURE_PE = 40;
+const MIN_FUTURE_PE = 8;
+
 function corsHeaders() {
   return {
     "Access-Control-Allow-Origin": ALLOWED_ORIGIN,
@@ -395,6 +409,217 @@ async function fetchAllBars(symbols, apiKeyId, apiSecret, endDateStr) {
   return barsBySymbol;
 }
 
+// ---- Sticker Price (SEC EDGAR fundamentals) ----
+
+var cikMapCache = null;
+
+async function fetchCikMap() {
+  if (cikMapCache) return cikMapCache;
+  var res = await fetch(SEC_TICKERS_URL, { headers: { "User-Agent": SEC_USER_AGENT } });
+  if (!res.ok) throw new Error("SEC ticker lookup failed: " + res.status);
+  var json = await res.json();
+  var map = {};
+  Object.keys(json).forEach(function (k) {
+    var row = json[k];
+    map[row.ticker.toUpperCase()] = row.cik_str;
+  });
+  cikMapCache = map;
+  return map;
+}
+
+function periodDays(v) {
+  var s = new Date(v.start), e = new Date(v.end);
+  return Math.round((e - s) / (24 * 60 * 60 * 1000));
+}
+
+// Fetches annual (10-K) EPS history for one CIK, deduped to one value per
+// true annual period (330-380 day span), keeping the most-recently-filed
+// restatement of each period.
+async function fetchAnnualEPS(cik) {
+  var cikStr = String(cik).padStart(10, "0");
+  var tags = ["EarningsPerShareDiluted", "EarningsPerShareBasic"];
+  for (var t = 0; t < tags.length; t++) {
+    var url = SEC_CONCEPT_URL.replace("{cik}", cikStr).replace("{tag}", tags[t]);
+    var res = await fetch(url, { headers: { "User-Agent": SEC_USER_AGENT } });
+    if (!res.ok) continue;
+    var json = await res.json();
+    var vals = (json.units && json.units["USD/shares"]) || [];
+    var annual = vals.filter(function (v) {
+      return v.form === "10-K" && v.fp === "FY" && v.start && periodDays(v) >= 330 && periodDays(v) <= 380;
+    });
+    var byEnd = {};
+    annual.forEach(function (v) {
+      if (!byEnd[v.end] || v.filed > byEnd[v.end].filed) byEnd[v.end] = v;
+    });
+    var series = Object.keys(byEnd).map(function (end) { return byEnd[end]; }).sort(function (a, b) {
+      return a.end < b.end ? -1 : 1;
+    });
+    if (series.length > 0) return series;
+  }
+  return [];
+}
+
+// Walk backward from the most recent year; stop (truncate) at the first
+// year-over-year ratio outside [0.4, 2.5] or non-positive EPS, since that
+// signals a stock split or other discontinuity SEC's raw figures don't
+// self-adjust for. Keeps only the clean, internally-consistent recent segment.
+function cleanEpsSeries(series) {
+  if (series.length === 0) return [];
+  var kept = [series[series.length - 1]];
+  for (var i = series.length - 2; i >= 0; i--) {
+    var newer = kept[0].val, older = series[i].val;
+    if (older <= 0 || newer <= 0) break;
+    var ratio = newer / older;
+    if (ratio < 0.4 || ratio > 2.5) break;
+    kept.unshift(series[i]);
+  }
+  return kept;
+}
+
+function computeGrowthRate(cleanSeries) {
+  if (cleanSeries.length < 3) return null;
+  var first = cleanSeries[0], last = cleanSeries[cleanSeries.length - 1];
+  var years = (new Date(last.end) - new Date(first.end)) / (365.25 * 24 * 60 * 60 * 1000);
+  if (years < 1.5) return null;
+  var rawRate = Math.pow(last.val / first.val, 1 / years) - 1;
+  return { raw: rawRate, capped: Math.min(rawRate, MAX_GROWTH_RATE), years: years };
+}
+
+// Nearest trading-day close on/before a given date, from a chronological bars array.
+function closeNear(bars, dateStr) {
+  var target = new Date(dateStr).getTime();
+  var best = null;
+  for (var i = 0; i < bars.length; i++) {
+    var t = new Date(bars[i].t).getTime();
+    if (t <= target) best = bars[i];
+    else break;
+  }
+  return best ? best.c : null;
+}
+
+async function fetchStickerPrices(symbols, apiKeyId, apiSecret) {
+  var cikMap = await fetchCikMap();
+
+  var end = new Date();
+  var start = new Date(end.getTime() - STICKER_LOOKBACK_DAYS * 24 * 60 * 60 * 1000);
+  var barsBySymbol = await fetchAllBarsRange(symbols, apiKeyId, apiSecret, start.toISOString().slice(0, 10), null);
+
+  var results = [];
+  for (var i = 0; i < symbols.length; i++) {
+    var sym = symbols[i];
+    var cik = cikMap[sym];
+    if (!cik) {
+      results.push({ symbol: sym, error: "No SEC filer found for this ticker" });
+      continue;
+    }
+
+    var epsSeries;
+    try {
+      epsSeries = await fetchAnnualEPS(cik);
+    } catch (err) {
+      results.push({ symbol: sym, error: "SEC EPS lookup failed: " + err.message });
+      continue;
+    }
+
+    var clean = cleanEpsSeries(epsSeries);
+    var growth = computeGrowthRate(clean);
+    if (!growth || growth.capped <= 0) {
+      results.push({ symbol: sym, error: "No reliable positive earnings growth found (recent split, negative earnings, or too little history)" });
+      continue;
+    }
+
+    var bars = barsBySymbol[sym] || [];
+    var peSamples = [];
+    clean.forEach(function (pt) {
+      var price = closeNear(bars, pt.end);
+      if (price && pt.val > 0) {
+        var pe = price / pt.val;
+        if (pe > 0 && pe < 200) peSamples.push(pe);
+      }
+    });
+    var historicalAvgPE = peSamples.length > 0 ? peSamples.reduce(function (a, b) { return a + b; }, 0) / peSamples.length : null;
+
+    var growthCapPE = growth.capped * 100 * 2;
+    var futurePE = historicalAvgPE !== null ? Math.min(historicalAvgPE, growthCapPE) : growthCapPE;
+    futurePE = Math.max(MIN_FUTURE_PE, Math.min(MAX_FUTURE_PE, futurePE));
+
+    var currentEPS = clean[clean.length - 1].val;
+    var futureEPS = currentEPS * Math.pow(1 + growth.capped, PROJECTION_YEARS);
+    var futurePrice = futureEPS * futurePE;
+    var stickerPrice = futurePrice / Math.pow(1 + MARR, PROJECTION_YEARS);
+    var mosPrice = stickerPrice * 0.5;
+
+    var currentPrice = bars.length > 0 ? bars[bars.length - 1].c : null;
+
+    results.push({
+      symbol: sym,
+      currentPrice: round(currentPrice, 2),
+      currentEPS: round(currentEPS, 2),
+      growthRate: round(growth.capped * 100, 1),
+      growthRateRaw: round(growth.raw * 100, 1),
+      yearsOfData: round(growth.years, 1),
+      historicalAvgPE: historicalAvgPE !== null ? round(historicalAvgPE, 1) : null,
+      futurePE: round(futurePE, 1),
+      stickerPrice: round(stickerPrice, 2),
+      mosPrice: round(mosPrice, 2),
+      latestFiscalYearEnd: clean[clean.length - 1].end,
+    });
+  }
+  return results;
+}
+
+// Same paging logic as fetchAllBars but with an explicit start/end range,
+// used for the longer sticker-price lookback rather than the daily indicator one.
+async function fetchAllBarsRange(symbols, apiKeyId, apiSecret, startStr, endDateStr) {
+  var barsBySymbol = {};
+  symbols.forEach(function (s) { barsBySymbol[s] = []; });
+
+  var pageToken = null;
+  var feed = "sip";
+  var attemptedIexFallback = false;
+
+  for (var page = 0; page < 20; page++) {
+    var url = new URL(ALPACA_BARS_URL);
+    url.searchParams.set("symbols", symbols.join(","));
+    url.searchParams.set("timeframe", "1Day");
+    url.searchParams.set("start", startStr);
+    if (endDateStr) url.searchParams.set("end", endDateStr);
+    url.searchParams.set("limit", "10000");
+    url.searchParams.set("adjustment", "split");
+    url.searchParams.set("sort", "asc");
+    url.searchParams.set("feed", feed);
+    if (pageToken) url.searchParams.set("page_token", pageToken);
+
+    var res = await fetch(url.toString(), {
+      headers: { "APCA-API-KEY-ID": apiKeyId, "APCA-API-SECRET-KEY": apiSecret },
+    });
+
+    if (!res.ok) {
+      var bodyText = await res.text();
+      if (res.status === 403 && feed === "sip" && !attemptedIexFallback) {
+        attemptedIexFallback = true;
+        feed = "iex";
+        pageToken = null;
+        page = -1;
+        continue;
+      }
+      throw new Error("Alpaca request failed: " + res.status + " " + bodyText);
+    }
+
+    var json = await res.json();
+    var barsObj = json.bars || {};
+    Object.keys(barsObj).forEach(function (sym) {
+      if (!barsBySymbol[sym]) barsBySymbol[sym] = [];
+      barsBySymbol[sym] = barsBySymbol[sym].concat(barsObj[sym]);
+    });
+
+    pageToken = json.next_page_token;
+    if (!pageToken) break;
+  }
+
+  return barsBySymbol;
+}
+
 export default {
   async fetch(request, env) {
     if (request.method === "OPTIONS") {
@@ -418,6 +643,16 @@ export default {
 
     if (!env.ALPACA_API_KEY_ID || !env.ALPACA_API_SECRET_KEY) {
       return jsonResponse({ error: "Worker is missing Alpaca API credentials" }, 500);
+    }
+
+    var mode = url.searchParams.get("mode");
+    if (mode === "sticker") {
+      try {
+        var stickerData = await fetchStickerPrices(symbols, env.ALPACA_API_KEY_ID, env.ALPACA_API_SECRET_KEY);
+        return jsonResponse({ data: stickerData, updated: new Date().toISOString() });
+      } catch (err) {
+        return jsonResponse({ error: err.message || "Unknown error" }, 502);
+      }
     }
 
     try {
