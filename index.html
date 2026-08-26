@@ -31,18 +31,6 @@
       }
       .logo-banner { display: block; width: 100%; height: auto; border-radius: var(--radius); }
       .controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-      .risk-settings { font-size: 12px; color: var(--text-secondary); }
-      .risk-settings label { display: flex; align-items: center; gap: 5px; }
-      .risk-settings input {
-        width: 70px;
-        font-size: 12px;
-        font-family: inherit;
-        padding: 4px 6px;
-        border-radius: 6px;
-        border: 1px solid var(--border);
-        background: #fff;
-        color: var(--text-primary);
-      }
       .updated { font-size: 12px; color: var(--text-muted); }
       select, button {
         font-size: 13px;
@@ -136,11 +124,6 @@
           <button id="stickerBtn">Update Fundamentals</button>
           <span class="sticker-meta" id="stickerMeta"></span>
         </div>
-        <div class="controls risk-settings">
-          <label>Account $ <input type="number" id="accountSizeInput" min="0" step="100" /></label>
-          <label>Risk % / trade <input type="number" id="riskPctInput" min="0.1" max="10" step="0.1" /></label>
-          <span class="sticker-meta">Sizing uses 2&times; ATR as the risk distance, only shown on Entry/Entry+ cards.</span>
-        </div>
       </div>
 
       <div class="legend">
@@ -221,65 +204,25 @@
         el.textContent = "Fundamentals as of " + new Date(stickerData.fetchedAt).toLocaleDateString();
       }
 
-      // Position sizing — answers "how many shares" using ATR as the risk
-      // distance, not "should I exit." The backtest showed a mechanical
-      // ATR stop-loss on this signal doesn't improve returns (the composite
-      // Exit already does that job), but the same ATR distance is still the
-      // right yardstick for how BIG a position to take: size down on volatile
-      // names (IREN, NBIS) automatically, size up on calm ones (COST, WMT).
-      var RISK_STORAGE_KEY = "pawanradar_risk_v1";
+      // Buy/stop reference for Entry cards — stop is 2x ATR below the current
+      // price. The backtest showed using this same distance as a hard, forced
+      // stop-loss makes returns worse (the composite Exit already does that
+      // job), so this is shown as a reference level only, not something the
+      // page enforces.
       var STOP_ATR_MULT = 2;
-
-      function loadRiskSettings() {
-        var defaults = { accountSize: 10000, riskPct: 1 };
-        try {
-          var raw = localStorage.getItem(RISK_STORAGE_KEY);
-          if (!raw) return defaults;
-          var parsed = JSON.parse(raw);
-          return {
-            accountSize: parsed.accountSize > 0 ? parsed.accountSize : defaults.accountSize,
-            riskPct: parsed.riskPct > 0 ? parsed.riskPct : defaults.riskPct
-          };
-        } catch (e) {
-          return defaults;
-        }
-      }
-
-      function saveRiskSettings(settings) {
-        riskSettings = settings;
-        try { localStorage.setItem(RISK_STORAGE_KEY, JSON.stringify(settings)); } catch (e) {}
-      }
-
-      var riskSettings = loadRiskSettings();
 
       function computeSizing(row) {
         if (!row.atr || row.atr <= 0 || !row.price) return null;
-        var stopDistance = STOP_ATR_MULT * row.atr;
-        var stopPrice = row.price - stopDistance;
+        var stopPrice = row.price - STOP_ATR_MULT * row.atr;
         if (stopPrice <= 0) return null;
-        var riskAmount = riskSettings.accountSize * (riskSettings.riskPct / 100);
-        var shares = Math.floor(riskAmount / stopDistance);
-        // Cap at what the account can actually afford — a tight stop on a cheap,
-        // low-volatility stock can otherwise imply a position bigger than the account.
-        var maxAffordableShares = Math.floor(riskSettings.accountSize / row.price);
-        shares = Math.min(shares, maxAffordableShares);
-        if (shares <= 0) return null;
-        var positionValue = shares * row.price;
-        return {
-          shares: shares,
-          positionValue: positionValue,
-          stopPrice: stopPrice,
-          riskAmount: riskAmount,
-          pctOfAccount: (positionValue / riskSettings.accountSize) * 100
-        };
+        return { buyPrice: row.price, stopPrice: stopPrice };
       }
 
       function sizingRowHtml(row, signal) {
         if (!signal || (signal.label !== "Entry" && signal.label !== "Entry+")) return "";
         var s = computeSizing(row);
         if (!s) return "";
-        return '<div class="sizing-row">Size: ' + s.shares + ' sh (~' + fmt(s.positionValue) +
-          ', ' + s.pctOfAccount.toFixed(0) + '% of account) &middot; stop ~' + fmt(s.stopPrice) + '</div>';
+        return '<div class="sizing-row">Buy ~' + fmt(s.buyPrice) + ' &middot; Stop ~' + fmt(s.stopPrice) + '</div>';
       }
 
       function stickerRowHtml(symbol) {
@@ -642,23 +585,6 @@
         render(e.target.value);
       });
       updateStickerMeta();
-
-      var accountSizeInput = document.getElementById("accountSizeInput");
-      var riskPctInput = document.getElementById("riskPctInput");
-      accountSizeInput.value = riskSettings.accountSize;
-      riskPctInput.value = riskSettings.riskPct;
-
-      function onRiskSettingsChange() {
-        var accountSize = parseFloat(accountSizeInput.value);
-        var riskPct = parseFloat(riskPctInput.value);
-        saveRiskSettings({
-          accountSize: accountSize > 0 ? accountSize : riskSettings.accountSize,
-          riskPct: riskPct > 0 ? riskPct : riskSettings.riskPct
-        });
-        render(document.getElementById("sortSel").value);
-      }
-      accountSizeInput.addEventListener("change", onRiskSettingsChange);
-      riskPctInput.addEventListener("change", onRiskSettingsChange);
     </script>
   </body>
 </html>

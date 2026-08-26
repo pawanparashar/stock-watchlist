@@ -175,30 +175,22 @@ threshold fired as "big" on literally every ticker, every day. Reading the
 actual headline is the reliable part; guessing its importance from volume
 isn't, so that guess was dropped.
 
-**Position sizing** — shown as a `Size: N sh (~$X, Y% of account) · stop
-~$Z` line, only on Entry/Entry+ cards (sizing a stock you're not planning to
-buy isn't useful). Set `Account $` and `Risk % / trade` once in the header —
-they're saved in `localStorage` and reused across visits.
+**Buy / Stop reference** — shown as a `Buy ~$X · Stop ~$Y` line, only on
+Entry/Entry+ cards (a stop reference for a stock you're not planning to buy
+isn't useful). Stop = current price − 2× ATR (`STOP_ATR_MULT` in
+`index.html`), so it sits further away on volatile names and closer on calm
+ones.
 
-- Risk distance = 2× ATR below the current price (`STOP_ATR_MULT` in
-  `index.html`). Shares = (account × risk%) ÷ risk distance, so it sizes
-  down automatically on volatile names and up on calm ones — a $5 ATR
-  stock gets a much smaller position than a $0.50 ATR stock for the same
-  dollar risk.
-- Capped at what the account can actually afford (position value can't
-  exceed account size), which matters for cheap, low-volatility stocks
-  where the risk-based share count alone could imply an unrealistic
-  position.
-- This was added *because of a backtest finding, not despite it*: I tested
-  applying this same 2× ATR distance as a hard stop-loss (exit the trade
-  early if price closes past it) across 101 trading days / 27 tickers, and
-  it made results **worse** at every multiple from 1.5x to 4x — average
-  return per trade dropped from +5.08% to as low as +2.49%, because several
-  volatile names (IREN, NBIS, SOFI) routinely move more than 2-3x ATR
-  without the setup actually failing, and the composite Exit signal was
-  already doing the "cut losses" job on its own. So the ATR distance is
-  used here only to size the position, not to force an exit — the Entry/Exit
-  signal is still what decides when to get in and out.
+This is a reference level only, not something the page enforces — and that's
+deliberate, from a backtest finding: I tested applying this same 2× ATR
+distance as a hard stop-loss (exit the trade early if price closes past it)
+across 101 trading days / 27 tickers, and it made results **worse** at every
+multiple from 1.5x to 4x — average return per trade dropped from +5.08% to
+as low as +2.49%, because several volatile names (IREN, NBIS, SOFI) routinely
+move more than 2-3x ATR without the setup actually failing, and the
+composite Exit signal was already doing the "cut losses" job on its own. So
+the Entry/Exit signal is still what decides when to get in and out; this is
+just a level to have in mind, not a rule the page follows.
 
 ## Adding or removing tickers
 
