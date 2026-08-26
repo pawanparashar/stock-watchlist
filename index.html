@@ -110,7 +110,7 @@
         <div class="controls">
           <span class="updated" id="updatedLabel">Not loaded yet</span>
           <select id="sortSel">
-            <option value="signal" selected>Sort: strongest buy first</option>
+            <option value="signal" selected>Sort: strongest entry first</option>
             <option value="severity">Sort: biggest dip first</option>
             <option value="ticker">Sort: ticker A-Z</option>
             <option value="price">Sort: price high to low</option>
@@ -246,15 +246,15 @@
           });
       }
 
-      // Composite Strong Buy..Strong Sell signal, scored from the same badges shown
+      // Composite Entry+..Exit+ signal, scored from the same badges shown
       // on the card. Not a recommendation to act on blindly — a summary of what the
       // other badges already say, weighted toward the "dip" philosophy of this page.
       var SIGNAL_TIERS = [
-        { min: 5,           label: "Strong Buy",  bg: "#B7DDAC", text: "#1B4D0F", rank: 5 },
-        { min: 2,           label: "Buy",         bg: "#EAF3DE", text: "#27500A", rank: 4 },
-        { min: -1,          label: "Hold",        bg: "#F1EFE8", text: "#6B6A63", rank: 3 },
-        { min: -4,          label: "Sell",        bg: "#FCEBEB", text: "#501313", rank: 2 },
-        { min: -Infinity,   label: "Strong Sell", bg: "#E9A6A6", text: "#4A0A0A", rank: 1 }
+        { min: 5,           label: "Entry+",  bg: "#B7DDAC", text: "#1B4D0F", rank: 5 },
+        { min: 2,           label: "Entry",   bg: "#EAF3DE", text: "#27500A", rank: 4 },
+        { min: -1,          label: "Watch",   bg: "#F1EFE8", text: "#6B6A63", rank: 3 },
+        { min: -4,          label: "Exit",    bg: "#FCEBEB", text: "#501313", rank: 2 },
+        { min: -Infinity,   label: "Exit+",   bg: "#E9A6A6", text: "#4A0A0A", rank: 1 }
       ];
       var LOW_BREAK_VOTE = { "7d": 1, "15d": 1, "30d": 2, "90d": 2, "180d": 3, "365d": 3 };
       var HIGH_BREAK_VOTE = { "7d": -1, "15d": -1, "30d": -2, "90d": -2, "180d": -3, "365d": -3 };

@@ -74,7 +74,7 @@ today's price fell outside that prior range). A window shows "insufficient
 history" if the ticker doesn't have enough daily bars yet (e.g. a recent
 IPO) — that's expected, not a bug.
 
-**Signal badge — Strong Buy / Buy / Hold / Sell / Strong Sell**
+**Signal badge — Entry+ / Entry / Watch / Exit / Exit+**
 A single composite read, right under the price/ATR line. It's computed
 client-side (in `index.html`, not the Worker) from the same badges on the
 card — nothing extra is fetched for it. It's a summary of what the other
@@ -114,19 +114,19 @@ conviction one direction — it can subtract it:
   a real trend to confirm, so Trend/MACD/Supertrend are discounted entirely
   rather than letting them drag the score around on noise.
 
-Total score → label: ≥5 Strong Buy, ≥2 Buy, ≥−1 Hold, ≥−4 Sell, else Strong
-Sell. To change the weights or thresholds, edit `SIGNAL_TIERS`,
+Total score → label: ≥5 Entry+, ≥2 Entry, ≥−1 Watch, ≥−4 Exit, else Exit+.
+To change the weights, thresholds, or labels, edit `SIGNAL_TIERS`,
 `LOW_BREAK_VOTE`, and the ADX multiplier logic in `index.html`.
 
 This scoring was tuned against a real backtest (GOOGL/GOOG bottoming Jul 23
 2026 and topping Aug 4 2026) where the pre-Stochastic, flat-voting version
-scored both as Hold — the trend-cluster's 3 correlated votes canceled out the
-correct reversal read from the low/high-break and Bollinger signals. With
-clustering + ADX-as-discount + Stochastic, the same two dates score Buy and
-Sell respectively.
+scored both as Watch — the trend-cluster's 3 correlated votes canceled out
+the correct reversal read from the low/high-break and Bollinger signals.
+With clustering + ADX-as-discount + Stochastic, the same two dates score
+Entry and Exit respectively.
 
 **Sort dropdown** — biggest dip first (default, ranks by deepest broken
-window) / strongest buy first (ranks by the signal badge) / ticker A-Z /
+window) / strongest entry first (ranks by the signal badge) / ticker A-Z /
 price high to low.
 
 **Sticker Price / Margin of Safety** — a long-term value-investing check
