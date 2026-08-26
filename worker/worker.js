@@ -4,8 +4,10 @@
 
 const ALLOWED_ORIGIN = "https://pawanparashar.github.io";
 const ALPACA_BARS_URL = "https://data.alpaca.markets/v2/stocks/bars";
+const ALPACA_NEWS_URL = "https://data.alpaca.markets/v1beta1/news";
 const LOOKBACK_DAYS = 800; // calendar days; yields ~550 trading days, comfortably covering the 365d window + indicator warm-up
 const WINDOWS = [7, 15, 30, 90, 180, 365];
+const NEWS_LOOKBACK_HOURS = 48; // covers a weekend gap into Monday
 
 // Sticker Price (Rule #1 / Phil Town style valuation) — a completely separate,
 // low-frequency path from the daily technical indicators above. Fundamentals
@@ -351,6 +353,65 @@ function computeRow(symbol, bars) {
   return row;
 }
 
+// Most recent headline per symbol, not a directional vote — just a "here's
+// what's going on, go read it before you act" pointer. Raw article-count
+// thresholds don't work as a significance signal here: heavily-covered
+// tickers (NVDA, AAPL) get dozens of routine wire articles per day regardless
+// of whether anything material happened, so "N articles" can't distinguish
+// a real event from ordinary daily volume. Surfacing the latest headline
+// (clickable) and letting a human judge it is the reliable part.
+async function fetchNews(symbols, apiKeyId, apiSecret) {
+  var newsBySymbol = {};
+  symbols.forEach(function (s) { newsBySymbol[s] = []; });
+
+  var start = new Date(Date.now() - NEWS_LOOKBACK_HOURS * 60 * 60 * 1000).toISOString();
+  var pageToken = null;
+
+  for (var page = 0; page < 3; page++) {
+    var url = new URL(ALPACA_NEWS_URL);
+    url.searchParams.set("symbols", symbols.join(","));
+    url.searchParams.set("start", start);
+    url.searchParams.set("limit", "50");
+    url.searchParams.set("sort", "desc");
+    if (pageToken) url.searchParams.set("page_token", pageToken);
+
+    var res = await fetch(url.toString(), {
+      headers: {
+        "APCA-API-KEY-ID": apiKeyId,
+        "APCA-API-SECRET-KEY": apiSecret,
+      },
+    });
+    if (!res.ok) return newsBySymbol; // news is a nice-to-have; fail quiet, not loud
+
+    var json = await res.json();
+    var articles = json.news || [];
+    articles.forEach(function (a) {
+      (a.symbols || []).forEach(function (sym) {
+        if (newsBySymbol[sym]) {
+          newsBySymbol[sym].push({ headline: a.headline, url: a.url, source: a.source, createdAt: a.created_at });
+        }
+      });
+    });
+
+    pageToken = json.next_page_token;
+    if (!pageToken) break;
+  }
+
+  var result = {};
+  Object.keys(newsBySymbol).forEach(function (sym) {
+    var articles = newsBySymbol[sym];
+    if (articles.length === 0) { result[sym] = null; return; }
+    result[sym] = {
+      count: articles.length,
+      latestHeadline: articles[0].headline,
+      latestUrl: articles[0].url,
+      latestSource: articles[0].source,
+      latestAt: articles[0].createdAt,
+    };
+  });
+  return result;
+}
+
 async function fetchAllBars(symbols, apiKeyId, apiSecret, endDateStr) {
   var end = endDateStr ? new Date(endDateStr + "T23:59:59Z") : new Date();
   var start = new Date(end.getTime() - LOOKBACK_DAYS * 24 * 60 * 60 * 1000);
@@ -656,8 +717,17 @@ export default {
     }
 
     try {
-      var barsBySymbol = await fetchAllBars(symbols, env.ALPACA_API_KEY_ID, env.ALPACA_API_SECRET_KEY, endDateStr);
-      var data = symbols.map(function (sym) { return computeRow(sym, barsBySymbol[sym]); });
+      var results = await Promise.all([
+        fetchAllBars(symbols, env.ALPACA_API_KEY_ID, env.ALPACA_API_SECRET_KEY, endDateStr),
+        endDateStr ? Promise.resolve({}) : fetchNews(symbols, env.ALPACA_API_KEY_ID, env.ALPACA_API_SECRET_KEY),
+      ]);
+      var barsBySymbol = results[0];
+      var newsBySymbol = results[1];
+      var data = symbols.map(function (sym) {
+        var row = computeRow(sym, barsBySymbol[sym]);
+        row.news = newsBySymbol[sym] || null;
+        return row;
+      });
       return jsonResponse({ data: data, updated: new Date().toISOString(), asOf: endDateStr || null });
     } catch (err) {
       return jsonResponse({ error: err.message || "Unknown error" }, 502);

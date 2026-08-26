@@ -164,6 +164,17 @@ completely separate from everything else on the page:
 - This is one specific, fairly aggressive value-investing formula, not a
   neutral fact — treat it as one more input, same as the technical signal.
 
+**News** — the most recent headline for that ticker (last 48 hours), shown
+as a link at the bottom of the card so you can check it before acting on a
+signal. Pulled from Alpaca's News API (same account/keys, one extra request
+per refresh, no new signup). Deliberately **not** flagged as "Big News" or
+similarly alarmed — an earlier version tried scoring significance by article
+count, but heavily-covered tickers (NVDA, AAPL) get dozens of routine wire
+articles a day regardless of whether anything material happened, so a count
+threshold fired as "big" on literally every ticker, every day. Reading the
+actual headline is the reliable part; guessing its importance from volume
+isn't, so that guess was dropped.
+
 ## Adding or removing tickers
 
 Edit the `TICKERS` array near the top of the `<script>` block in

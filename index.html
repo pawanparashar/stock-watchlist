@@ -97,6 +97,10 @@
       .win-high { font-size: 12px; color: var(--text-secondary); }
       .win-na { font-size: 12px; color: var(--text-muted); }
       .error-card { font-size: 13px; color: #A32D2D; }
+      .news-row { font-size: 11px; color: var(--text-secondary); margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border); }
+      .news-row a { color: var(--text-secondary); text-decoration: none; }
+      .news-row a:hover { text-decoration: underline; }
+      .news-meta { color: var(--text-muted); }
       .legend { display: flex; gap: 12px; flex-wrap: wrap; margin: 10px 0 16px; font-size: 11px; color: var(--text-secondary); }
       .legend span { display: inline-flex; align-items: center; gap: 4px; }
       .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; }
@@ -340,6 +344,31 @@
         return "$" + n.toFixed(2);
       }
 
+      // Headline/source/url come from an external news feed via the Worker,
+      // not from anything we control — escape before inserting into innerHTML.
+      function escapeHtml(s) {
+        if (s === null || s === undefined) return "";
+        return String(s)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#39;");
+      }
+
+      function newsRowHtml(news) {
+        if (!news || !news.latestHeadline) return "";
+        var href = news.latestUrl ? escapeHtml(news.latestUrl) : "";
+        var headline = escapeHtml(news.latestHeadline);
+        var source = news.latestSource ? escapeHtml(news.latestSource) : "";
+        var link = href
+          ? '<a href="' + href + '" target="_blank" rel="noopener noreferrer">' + headline + '</a>'
+          : headline;
+        return '<div class="news-row">News: ' + link +
+          (source ? ' <span class="news-meta">(' + source + ')</span>' : '') +
+          '</div>';
+      }
+
       // ---- Indicator badges ----
 
       function rsiBadgeHtml(rsi) {
@@ -462,8 +491,9 @@
         grid += '</div>';
 
         var stickerRow = stickerRowHtml(row.symbol);
+        var newsRow = newsRowHtml(row.news);
 
-        return '<div class="card" style="border-left-color:' + borderColor + ';">' + head + signalRow + badges + stickerRow + grid + '</div>';
+        return '<div class="card" style="border-left-color:' + borderColor + ';">' + head + signalRow + badges + stickerRow + grid + newsRow + '</div>';
       }
 
       function render(sortBy) {
