@@ -235,6 +235,22 @@
         return '<div class="sizing-row">Buy ~' + fmt(s.buyPrice) + ' &middot; Stop ~' + fmt(s.stopPrice) + '</div>';
       }
 
+      // Exit-side equivalent of computeSizing/sizingRowHtml: for a position you're
+      // already holding, "sell" is just the current price (the Exit/Exit+ signal
+      // itself is the trigger, not a future price target) and the Supertrend value
+      // doubles as the trailing-stop reference, same as its badge already says.
+      function computeExitLevels(row) {
+        if (!row.supertrend || !row.price) return null;
+        return { sellPrice: row.price, trailPrice: row.supertrend.value };
+      }
+
+      function exitRowHtml(row, signal) {
+        if (!signal || (signal.label !== "Exit" && signal.label !== "Exit+")) return "";
+        var e = computeExitLevels(row);
+        if (!e) return "";
+        return '<div class="sizing-row">Sell ~' + fmt(e.sellPrice) + ' &middot; Trail stop ~' + fmt(e.trailPrice) + '</div>';
+      }
+
       // Section 1 only (see buildCard) — a quick visual check on top of the badges,
       // since a clean higher-low pattern and a knife-catch can show identical badges.
       function formatChartDate(isoDate) {
@@ -259,6 +275,11 @@
         if (sizing) {
           min = Math.min(min, sizing.stopPrice);
           max = Math.max(max, sizing.buyPrice);
+        }
+        var exitLevels = (signal && (signal.label === "Exit" || signal.label === "Exit+")) ? computeExitLevels(row) : null;
+        if (exitLevels) {
+          min = Math.min(min, exitLevels.sellPrice, exitLevels.trailPrice);
+          max = Math.max(max, exitLevels.sellPrice, exitLevels.trailPrice);
         }
         var span = (max - min) || 1;
         var pad = span * 0.06;
@@ -286,6 +307,14 @@
           svg += '<text x="' + (w - padR - 4) + '" y="' + (parseFloat(stopY) - 4) + '" text-anchor="end" class="chart-label" style="fill:#A32D2D">stop ' + fmt(sizing.stopPrice) + '</text>';
           svg += '<line x1="' + padL + '" y1="' + buyY + '" x2="' + (w - padR) + '" y2="' + buyY + '" stroke="#27500A" stroke-width="1" stroke-dasharray="4 3"/>';
           svg += '<text x="' + (w - padR - 4) + '" y="' + (parseFloat(buyY) - 4) + '" text-anchor="end" class="chart-label" style="fill:#27500A">buy ' + fmt(sizing.buyPrice) + '</text>';
+        }
+
+        if (exitLevels) {
+          var sellY = y(exitLevels.sellPrice).toFixed(1), trailY = y(exitLevels.trailPrice).toFixed(1);
+          svg += '<line x1="' + padL + '" y1="' + sellY + '" x2="' + (w - padR) + '" y2="' + sellY + '" stroke="#791F1F" stroke-width="1" stroke-dasharray="4 3"/>';
+          svg += '<text x="' + (w - padR - 4) + '" y="' + (parseFloat(sellY) - 4) + '" text-anchor="end" class="chart-label" style="fill:#791F1F">sell ' + fmt(exitLevels.sellPrice) + '</text>';
+          svg += '<line x1="' + padL + '" y1="' + trailY + '" x2="' + (w - padR) + '" y2="' + trailY + '" stroke="#854F0B" stroke-width="1" stroke-dasharray="4 3"/>';
+          svg += '<text x="' + (w - padR - 4) + '" y="' + (parseFloat(trailY) - 4) + '" text-anchor="end" class="chart-label" style="fill:#854F0B">trail stop ' + fmt(exitLevels.trailPrice) + '</text>';
         }
 
         var linePoints = closes.map(function (v, i) { return x(i).toFixed(1) + "," + y(v).toFixed(1); }).join(" ");
@@ -561,7 +590,7 @@
         head += '</div>';
 
         var signal = computeSignal(row);
-        var signalRow = signal ? '<div>' + signalBadgeHtml(signal) + volConfirmBadgeHtml(signal, row.relVol) + sizingRowHtml(row, signal) + '</div>' : '';
+        var signalRow = signal ? '<div>' + signalBadgeHtml(signal) + volConfirmBadgeHtml(signal, row.relVol) + sizingRowHtml(row, signal) + exitRowHtml(row, signal) + '</div>' : '';
 
         var badges = '<div class="badges-row">' +
           rsiBadgeHtml(row.rsi) +

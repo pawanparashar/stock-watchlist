@@ -192,6 +192,13 @@ composite Exit signal was already doing the "cut losses" job on its own. So
 the Entry/Exit signal is still what decides when to get in and out; this is
 just a level to have in mind, not a rule the page follows.
 
+**Sell / Trail stop reference** — the Exit/Exit+ equivalent, shown as a
+`Sell ~$X · Trail stop ~$Y` line. Unlike Entry, "sell" isn't a future price
+target — the Exit/Exit+ signal itself is the trigger, so it's just the
+current price. Trail stop reuses the Supertrend value already shown as a
+badge (`computeExitLevels` in `index.html`), since that badge already
+describes itself as a trailing-stop reference.
+
 **Vol confirmed badge** — shown next to the Entry/Entry+ badge, only when
 relative volume was ≥1.2x average on that entry (`VOL_CONFIRM_THRESHOLD` in
 `index.html`). Not scored — it doesn't touch `computeSignal`. A backtest on
@@ -206,8 +213,9 @@ knife-catch that happens to score the same. Labeled with 3 price gridlines
 (high/mid/low over the 60 days) and the start/end dates, so it reads as an
 actual chart rather than an unscaled squiggle. On Entry/Entry+ cards it also
 draws the Buy and Stop levels as dashed, labeled reference lines over the
-price history, so you can see where those levels actually sit relative to
-recent structure. Reuses bars already fetched for the daily indicators — no
+price history, and on Exit/Exit+ cards the Sell and Trail stop levels, so
+you can see where those levels actually sit relative to recent structure.
+Reuses bars already fetched for the daily indicators — no
 extra API calls; the Worker includes each of the last 60 bars as `{t, c}`
 (date, close) in the `sparkline` field.
 
