@@ -257,6 +257,11 @@ affects layout, not data fetching.
   Not wired into the page UI; use it directly (curl, or a script) to check
   what the page would have shown on a past date against what actually
   happened.
+- **Page view counter**: shown at the bottom of the page. Backed by a
+  Cloudflare KV namespace (`VISITS` binding in `wrangler.toml`) — the Worker
+  increments a single counter key on `?mode=visit`, called once per page
+  load (not on Refresh clicks). This counts total page loads, not unique
+  visitors — no cookies or IP tracking involved.
 - **Branding**: [assets/logo-header.jpg](assets/logo-header.jpg) is the full
   banner shown in place of a text title/header, cropped from a source brand
   image. [assets/favicon.png](assets/favicon.png) is a 180x180 crop of the

@@ -697,6 +697,20 @@ export default {
     }
 
     var url = new URL(request.url);
+
+    // Page-load counter — total loads, not unique visitors (no cookies/IP
+    // tracking). Doesn't need a symbols param, so it's handled before that check.
+    if (url.searchParams.get("mode") === "visit") {
+      try {
+        var current = parseInt((await env.VISITS.get("count")) || "0", 10);
+        var next = current + 1;
+        await env.VISITS.put("count", String(next));
+        return jsonResponse({ count: next });
+      } catch (err) {
+        return jsonResponse({ error: err.message || "Unknown error" }, 502);
+      }
+    }
+
     var symbolsParam = url.searchParams.get("symbols");
     if (!symbolsParam) {
       return jsonResponse({ error: "Missing symbols query parameter" }, 400);

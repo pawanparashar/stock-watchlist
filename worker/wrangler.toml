@@ -7,3 +7,7 @@ enabled = true
 
 [observability.logs]
 enabled = true
+
+[[kv_namespaces]]
+binding = "VISITS"
+id = "b8cc30b1012548afb2cd21a5749a7c62"

@@ -111,6 +111,7 @@
       .legend span { display: inline-flex; align-items: center; gap: 4px; }
       .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; }
       .empty-state { text-align: center; color: var(--text-muted); font-size: 13px; padding: 40px 0; }
+      .footer { text-align: center; color: var(--text-muted); font-size: 12px; margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--border); }
     </style>
   </head>
   <body>
@@ -152,6 +153,10 @@
         <div class="empty-state">Click Refresh to load your watchlist.</div>
       </div>
       <div id="rows-rest"></div>
+
+      <div class="footer">
+        <span id="visitCount"></span>
+      </div>
     </div>
 
     <script>
@@ -702,6 +707,17 @@
       document.getElementById("sortSel").addEventListener("change", function (e) {
         render(e.target.value);
       });
+
+      // Total page loads, not unique visitors — counted once per page open, not
+      // on every Refresh click.
+      fetch(WORKER_URL + "?mode=visit")
+        .then(function (res) { return res.json(); })
+        .then(function (json) {
+          if (json.count) {
+            document.getElementById("visitCount").textContent = json.count.toLocaleString() + " page views";
+          }
+        })
+        .catch(function () {});
       updateStickerMeta();
     </script>
   </body>
