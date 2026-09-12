@@ -352,7 +352,7 @@ function computeRow(symbol, bars) {
 
   // Compact closing-price history for a frontend sparkline. Reuses bars already
   // fetched for the indicators above, no extra API calls.
-  row.sparkline = closes.slice(-60).map(function (c) { return round(c, 2); });
+  row.sparkline = bars.slice(-60).map(function (b) { return { t: b.t.slice(0, 10), c: round(b.c, 2) }; });
 
   return row;
 }

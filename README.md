@@ -202,12 +202,14 @@ surfaced as a visual cue for you to weigh, not a silent change to the score.
 
 **Sparkline** — Section 1 cards only (`TOP_TICKERS`), a 60-day closing-price
 line, since badges alone can't distinguish a clean higher-low bounce from a
-knife-catch that happens to score the same. On Entry/Entry+ cards it also
-draws the Buy and Stop levels as dashed reference lines over the price
-history, so you can see where those levels actually sit relative to recent
-structure. Reuses bars already fetched for the daily indicators — no extra
-API calls; the Worker just includes the last 60 closes (`sparkline` field) in
-its response.
+knife-catch that happens to score the same. Labeled with 3 price gridlines
+(high/mid/low over the 60 days) and the start/end dates, so it reads as an
+actual chart rather than an unscaled squiggle. On Entry/Entry+ cards it also
+draws the Buy and Stop levels as dashed, labeled reference lines over the
+price history, so you can see where those levels actually sit relative to
+recent structure. Reuses bars already fetched for the daily indicators — no
+extra API calls; the Worker includes each of the last 60 bars as `{t, c}`
+(date, close) in the `sparkline` field.
 
 ## Adding or removing tickers
 

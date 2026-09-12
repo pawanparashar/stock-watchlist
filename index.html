@@ -82,7 +82,8 @@
       .signal-badge { display: inline-block; font-size: 13px; font-weight: 700; padding: 5px 14px; border-radius: 14px; margin-bottom: 10px; }
       .vol-confirm-badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 14px; margin: 0 0 10px 6px; background: #FFFFFF; color: #0C447C; border: 1.5px solid #378ADD; }
       .sparkline-wrap { margin-bottom: 10px; }
-      .sparkline { display: block; width: 100%; height: 56px; }
+      .sparkline { display: block; width: 100%; height: auto; }
+      .chart-label { font-size: 10px; fill: var(--text-muted); }
       .sticker-row { margin-bottom: 10px; }
       .sticker-price-value { font-size: 14px; font-weight: 700; color: var(--text-primary); }
       .sticker-label { font-weight: 600; font-size: 12px; padding: 2px 8px; border-radius: 10px; margin-left: 6px; }
@@ -236,30 +237,60 @@
 
       // Section 1 only (see buildCard) — a quick visual check on top of the badges,
       // since a clean higher-low pattern and a knife-catch can show identical badges.
-      function sparklineHtml(row, signal) {
-        var data = row.sparkline;
-        if (!data || data.length < 2) return "";
+      function formatChartDate(isoDate) {
+        var months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+        var parts = isoDate.split("-");
+        return months[parseInt(parts[1], 10) - 1] + " " + parseInt(parts[2], 10);
+      }
 
-        var w = 600, h = 70, pad = 4;
-        var min = Math.min.apply(null, data), max = Math.max.apply(null, data);
+      function sparklineHtml(row, signal) {
+        var points_in = row.sparkline;
+        if (!points_in || points_in.length < 2) return "";
+        var closes = points_in.map(function (p) { return p.c; });
+
+        // Fixed aspect ratio (no preserveAspectRatio="none") so axis text scales
+        // uniformly with card width instead of stretching/squashing.
+        var w = 600, h = 150;
+        var padL = 54, padR = 10, padT = 14, padB = 24;
+        var plotW = w - padL - padR, plotH = h - padT - padB;
+
+        var min = Math.min.apply(null, closes), max = Math.max.apply(null, closes);
         var sizing = (signal && (signal.label === "Entry" || signal.label === "Entry+")) ? computeSizing(row) : null;
         if (sizing) {
           min = Math.min(min, sizing.stopPrice);
           max = Math.max(max, sizing.buyPrice);
         }
-        var range = max - min || 1;
-        function x(i) { return pad + (i / (data.length - 1)) * (w - pad * 2); }
-        function y(v) { return pad + (1 - (v - min) / range) * (h - pad * 2); }
+        var span = (max - min) || 1;
+        var pad = span * 0.06;
+        min -= pad; max += pad; span = max - min;
 
-        var points = data.map(function (v, i) { return x(i).toFixed(1) + "," + y(v).toFixed(1); }).join(" ");
-        var lineColor = data[data.length - 1] >= data[0] ? "#27500A" : "#791F1F";
+        function x(i) { return padL + (i / (closes.length - 1)) * plotW; }
+        function y(v) { return padT + (1 - (v - min) / span) * plotH; }
 
-        var svg = '<svg class="sparkline" viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none">';
+        var svg = '<svg class="sparkline" viewBox="0 0 ' + w + ' ' + h + '">';
+
+        // Y-axis gridlines + price labels (max, mid, min)
+        [max - pad, (max - pad + min + pad) / 2, min + pad].forEach(function (p) {
+          var yy = y(p).toFixed(1);
+          svg += '<line x1="' + padL + '" y1="' + yy + '" x2="' + (w - padR) + '" y2="' + yy + '" stroke="var(--border)" stroke-width="0.5"/>';
+          svg += '<text x="' + (padL - 6) + '" y="' + (parseFloat(yy) + 3) + '" text-anchor="end" class="chart-label">' + fmt(p) + '</text>';
+        });
+
+        // X-axis date labels (start, end)
+        svg += '<text x="' + padL + '" y="' + (h - 6) + '" text-anchor="start" class="chart-label">' + formatChartDate(points_in[0].t) + '</text>';
+        svg += '<text x="' + (w - padR) + '" y="' + (h - 6) + '" text-anchor="end" class="chart-label">' + formatChartDate(points_in[points_in.length - 1].t) + '</text>';
+
         if (sizing) {
-          svg += '<line x1="' + pad + '" y1="' + y(sizing.stopPrice).toFixed(1) + '" x2="' + (w - pad) + '" y2="' + y(sizing.stopPrice).toFixed(1) + '" stroke="#A32D2D" stroke-width="1" stroke-dasharray="3 3"/>';
-          svg += '<line x1="' + pad + '" y1="' + y(sizing.buyPrice).toFixed(1) + '" x2="' + (w - pad) + '" y2="' + y(sizing.buyPrice).toFixed(1) + '" stroke="#27500A" stroke-width="1" stroke-dasharray="3 3"/>';
+          var stopY = y(sizing.stopPrice).toFixed(1), buyY = y(sizing.buyPrice).toFixed(1);
+          svg += '<line x1="' + padL + '" y1="' + stopY + '" x2="' + (w - padR) + '" y2="' + stopY + '" stroke="#A32D2D" stroke-width="1" stroke-dasharray="4 3"/>';
+          svg += '<text x="' + (w - padR - 4) + '" y="' + (parseFloat(stopY) - 4) + '" text-anchor="end" class="chart-label" style="fill:#A32D2D">stop ' + fmt(sizing.stopPrice) + '</text>';
+          svg += '<line x1="' + padL + '" y1="' + buyY + '" x2="' + (w - padR) + '" y2="' + buyY + '" stroke="#27500A" stroke-width="1" stroke-dasharray="4 3"/>';
+          svg += '<text x="' + (w - padR - 4) + '" y="' + (parseFloat(buyY) - 4) + '" text-anchor="end" class="chart-label" style="fill:#27500A">buy ' + fmt(sizing.buyPrice) + '</text>';
         }
-        svg += '<polyline points="' + points + '" fill="none" stroke="' + lineColor + '" stroke-width="1.75"/>';
+
+        var linePoints = closes.map(function (v, i) { return x(i).toFixed(1) + "," + y(v).toFixed(1); }).join(" ");
+        var lineColor = closes[closes.length - 1] >= closes[0] ? "#27500A" : "#791F1F";
+        svg += '<polyline points="' + linePoints + '" fill="none" stroke="' + lineColor + '" stroke-width="1.75"/>';
         svg += '</svg>';
         return '<div class="sparkline-wrap">' + svg + '</div>';
       }
