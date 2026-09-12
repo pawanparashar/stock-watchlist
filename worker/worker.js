@@ -629,9 +629,10 @@ async function fetchStickerPrices(symbols, apiKeyId, apiSecret) {
   return results;
 }
 
-// Same paging logic as fetchAllBars but with an explicit start/end range,
-// used for the longer sticker-price lookback rather than the daily indicator one.
-async function fetchAllBarsRange(symbols, apiKeyId, apiSecret, startStr, endDateStr) {
+// Same paging logic as fetchAllBars but with an explicit start/end range and
+// timeframe, used for the longer sticker-price lookback and for raw intraday
+// backtesting pulls rather than the daily indicator one.
+async function fetchAllBarsRange(symbols, apiKeyId, apiSecret, startStr, endDateStr, timeframe) {
   var barsBySymbol = {};
   symbols.forEach(function (s) { barsBySymbol[s] = []; });
 
@@ -642,7 +643,7 @@ async function fetchAllBarsRange(symbols, apiKeyId, apiSecret, startStr, endDate
   for (var page = 0; page < 20; page++) {
     var url = new URL(ALPACA_BARS_URL);
     url.searchParams.set("symbols", symbols.join(","));
-    url.searchParams.set("timeframe", "1Day");
+    url.searchParams.set("timeframe", timeframe || "1Day");
     url.searchParams.set("start", startStr);
     if (endDateStr) url.searchParams.set("end", endDateStr);
     url.searchParams.set("limit", "10000");
@@ -681,6 +682,10 @@ async function fetchAllBarsRange(symbols, apiKeyId, apiSecret, startStr, endDate
   return barsBySymbol;
 }
 
+async function fetchRawBars(symbols, apiKeyId, apiSecret, timeframe, startStr, endStr) {
+  return fetchAllBarsRange(symbols, apiKeyId, apiSecret, startStr, endStr, timeframe);
+}
+
 export default {
   async fetch(request, env) {
     if (request.method === "OPTIONS") {
@@ -711,6 +716,24 @@ export default {
       try {
         var stickerData = await fetchStickerPrices(symbols, env.ALPACA_API_KEY_ID, env.ALPACA_API_SECRET_KEY);
         return jsonResponse({ data: stickerData, updated: new Date().toISOString() });
+      } catch (err) {
+        return jsonResponse({ error: err.message || "Unknown error" }, 502);
+      }
+    }
+
+    // Research/backtesting primitive: raw intraday bars, no indicator computation.
+    // Used to validate a day-trading approach against real data before building
+    // any UI around it. Not used by the main page.
+    if (mode === "raw") {
+      var timeframe = url.searchParams.get("timeframe") || "5Min";
+      var rawStart = url.searchParams.get("start");
+      var rawEnd = url.searchParams.get("end");
+      if (!rawStart || !rawEnd) {
+        return jsonResponse({ error: "mode=raw requires start and end (YYYY-MM-DD)" }, 400);
+      }
+      try {
+        var rawBars = await fetchRawBars(symbols, env.ALPACA_API_KEY_ID, env.ALPACA_API_SECRET_KEY, timeframe, rawStart, rawEnd);
+        return jsonResponse({ bars: rawBars });
       } catch (err) {
         return jsonResponse({ error: err.message || "Unknown error" }, 502);
       }
