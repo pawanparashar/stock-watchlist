@@ -192,6 +192,23 @@ composite Exit signal was already doing the "cut losses" job on its own. So
 the Entry/Exit signal is still what decides when to get in and out; this is
 just a level to have in mind, not a rule the page follows.
 
+**Vol confirmed badge** — shown next to the Entry/Entry+ badge, only when
+relative volume was ≥1.2x average on that entry (`VOL_CONFIRM_THRESHOLD` in
+`index.html`). Not scored — it doesn't touch `computeSignal`. A backtest on
+Section 1 found Entry signals with elevated volume won 67% of the time vs 55%
+without (n=6 vs n=11), which is a real difference but too small a sample to
+turn into a scoring rule without risking overfitting a coincidence. So it's
+surfaced as a visual cue for you to weigh, not a silent change to the score.
+
+**Sparkline** — Section 1 cards only (`TOP_TICKERS`), a 60-day closing-price
+line, since badges alone can't distinguish a clean higher-low bounce from a
+knife-catch that happens to score the same. On Entry/Entry+ cards it also
+draws the Buy and Stop levels as dashed reference lines over the price
+history, so you can see where those levels actually sit relative to recent
+structure. Reuses bars already fetched for the daily indicators — no extra
+API calls; the Worker just includes the last 60 closes (`sparkline` field) in
+its response.
+
 ## Adding or removing tickers
 
 Edit the `TICKERS` array near the top of the `<script>` block in

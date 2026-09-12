@@ -80,6 +80,9 @@
       }
       .no-signal { font-size: 12px; color: var(--text-muted); }
       .signal-badge { display: inline-block; font-size: 13px; font-weight: 700; padding: 5px 14px; border-radius: 14px; margin-bottom: 10px; }
+      .vol-confirm-badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 14px; margin: 0 0 10px 6px; background: #FFFFFF; color: #0C447C; border: 1.5px solid #378ADD; }
+      .sparkline-wrap { margin-bottom: 10px; }
+      .sparkline { display: block; width: 100%; height: 56px; }
       .sticker-row { margin-bottom: 10px; }
       .sticker-price-value { font-size: 14px; font-weight: 700; color: var(--text-primary); }
       .sticker-label { font-weight: 600; font-size: 12px; padding: 2px 8px; border-radius: 10px; margin-left: 6px; }
@@ -229,6 +232,36 @@
         var s = computeSizing(row);
         if (!s) return "";
         return '<div class="sizing-row">Buy ~' + fmt(s.buyPrice) + ' &middot; Stop ~' + fmt(s.stopPrice) + '</div>';
+      }
+
+      // Section 1 only (see buildCard) — a quick visual check on top of the badges,
+      // since a clean higher-low pattern and a knife-catch can show identical badges.
+      function sparklineHtml(row, signal) {
+        var data = row.sparkline;
+        if (!data || data.length < 2) return "";
+
+        var w = 600, h = 70, pad = 4;
+        var min = Math.min.apply(null, data), max = Math.max.apply(null, data);
+        var sizing = (signal && (signal.label === "Entry" || signal.label === "Entry+")) ? computeSizing(row) : null;
+        if (sizing) {
+          min = Math.min(min, sizing.stopPrice);
+          max = Math.max(max, sizing.buyPrice);
+        }
+        var range = max - min || 1;
+        function x(i) { return pad + (i / (data.length - 1)) * (w - pad * 2); }
+        function y(v) { return pad + (1 - (v - min) / range) * (h - pad * 2); }
+
+        var points = data.map(function (v, i) { return x(i).toFixed(1) + "," + y(v).toFixed(1); }).join(" ");
+        var lineColor = data[data.length - 1] >= data[0] ? "#27500A" : "#791F1F";
+
+        var svg = '<svg class="sparkline" viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none">';
+        if (sizing) {
+          svg += '<line x1="' + pad + '" y1="' + y(sizing.stopPrice).toFixed(1) + '" x2="' + (w - pad) + '" y2="' + y(sizing.stopPrice).toFixed(1) + '" stroke="#A32D2D" stroke-width="1" stroke-dasharray="3 3"/>';
+          svg += '<line x1="' + pad + '" y1="' + y(sizing.buyPrice).toFixed(1) + '" x2="' + (w - pad) + '" y2="' + y(sizing.buyPrice).toFixed(1) + '" stroke="#27500A" stroke-width="1" stroke-dasharray="3 3"/>';
+        }
+        svg += '<polyline points="' + points + '" fill="none" stroke="' + lineColor + '" stroke-width="1.75"/>';
+        svg += '</svg>';
+        return '<div class="sparkline-wrap">' + svg + '</div>';
       }
 
       function stickerRowHtml(symbol) {
@@ -420,6 +453,17 @@
         return '<span class="indicator-badge" style="background:#E6F1FB;color:#042C53;">' + relVol.toFixed(1) + 'x volume</span>';
       }
 
+      // Not scored — a backtest on Section 1 (n=6, too small to trust as a scoring
+      // rule) found Entry signals accompanied by relVol >= 1.2x won noticeably more
+      // often (67% vs 55%) than those without. Surfaced as a visual cue on the Entry
+      // badge itself so the read stays a judgment call, not a silent scoring change.
+      var VOL_CONFIRM_THRESHOLD = 1.2;
+      function volConfirmBadgeHtml(signal, relVol) {
+        if (!signal || (signal.label !== "Entry" && signal.label !== "Entry+")) return "";
+        if (relVol === null || relVol === undefined || relVol < VOL_CONFIRM_THRESHOLD) return "";
+        return '<span class="vol-confirm-badge" title="Volume was ' + relVol.toFixed(1) + 'x average on this Entry — historically a stronger setup">Vol confirmed</span>';
+      }
+
       function macdBadgeHtml(macd) {
         if (!macd) return "";
         var bg = macd.bullish ? "#EAF3DE" : "#FCEBEB";
@@ -486,7 +530,7 @@
         head += '</div>';
 
         var signal = computeSignal(row);
-        var signalRow = signal ? '<div>' + signalBadgeHtml(signal) + sizingRowHtml(row, signal) + '</div>' : '';
+        var signalRow = signal ? '<div>' + signalBadgeHtml(signal) + volConfirmBadgeHtml(signal, row.relVol) + sizingRowHtml(row, signal) + '</div>' : '';
 
         var badges = '<div class="badges-row">' +
           rsiBadgeHtml(row.rsi) +
@@ -518,10 +562,11 @@
         }
         grid += '</div>';
 
+        var spark = TOP_TICKERS.indexOf(row.symbol) !== -1 ? sparklineHtml(row, signal) : "";
         var stickerRow = stickerRowHtml(row.symbol);
         var newsRow = newsRowHtml(row.news);
 
-        return '<div class="card" style="border-left-color:' + borderColor + ';">' + head + signalRow + badges + stickerRow + grid + newsRow + '</div>';
+        return '<div class="card" style="border-left-color:' + borderColor + ';">' + head + signalRow + badges + spark + stickerRow + grid + newsRow + '</div>';
       }
 
       function sortRows(rows, sortBy) {
