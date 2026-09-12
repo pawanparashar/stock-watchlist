@@ -198,13 +198,19 @@ Edit the `TICKERS` array near the top of the `<script>` block in
 [index.html](index.html):
 
 ```js
-var TICKERS = ["AAPL","NVDA","GOOGL","AMZN","GOOG","AVGO","META","TSLA","MU","AMD","INTC","CAT","NFLX","SPCX","CRM","NOW","PANW","DOCU","MSFT","PLTR","NBIS","SOFI","BABA","IREN","WMT","FIG","COST"];
+var TICKERS = ["AAPL","NVDA","GOOGL","AMZN","GOOG","AVGO","META","TSLA","MU","AMD","INTC","CAT","NFLX","SPCX","CRM","NOW","PANW","DOCU","MSFT","PLTR","NBIS","SOFI","BABA","IREN","WMT","FIG","COST","UBER"];
 ```
 
 Add or remove symbols (they must be valid Alpaca/US-equity tickers), then
 commit and push to `main` — GitHub Pages redeploys automatically within a
 minute or two. No changes needed on the Worker side; it fetches whatever
 symbols the frontend asks for.
+
+**Two display groups**: `TOP_TICKERS` (also in `index.html`) lists which
+symbols render in the first group at the top of the page — everything else
+in `TICKERS` renders below a hairline divider. Both groups still come from
+one Worker request and sort independently within themselves; this only
+affects layout, not data fetching.
 
 ## Backend / infrastructure
 

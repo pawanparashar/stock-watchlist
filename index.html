@@ -51,7 +51,8 @@
         border: none;
       }
       button#refreshBtn:disabled { opacity: 0.6; cursor: default; }
-      #rows { display: flex; flex-direction: column; gap: 8px; }
+      #rows-top, #rows-rest { display: flex; flex-direction: column; gap: 8px; }
+      #rows-rest:not(:empty) { margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--border); }
       .card {
         border: 1px solid var(--border);
         border-left: 4px solid var(--border);
@@ -143,14 +144,19 @@
         <span><span class="swatch" style="background:#0D3E68;"></span>above 365d high</span>
       </div>
 
-      <div id="rows">
+      <div id="rows-top">
         <div class="empty-state">Click Refresh to load your watchlist.</div>
       </div>
+      <div id="rows-rest"></div>
     </div>
 
     <script>
       // ---- Configuration ----
-      var TICKERS = ["AAPL","NVDA","GOOGL","AMZN","GOOG","AVGO","META","TSLA","MU","AMD","INTC","CAT","NFLX","SPCX","CRM","NOW","PANW","DOCU","MSFT","PLTR","NBIS","SOFI","BABA","IREN","WMT","FIG","COST"];
+      var TICKERS = ["AAPL","NVDA","GOOGL","AMZN","GOOG","AVGO","META","TSLA","MU","AMD","INTC","CAT","NFLX","SPCX","CRM","NOW","PANW","DOCU","MSFT","PLTR","NBIS","SOFI","BABA","IREN","WMT","FIG","COST","UBER"];
+      // Split into two visual groups on the page (no header text, just a gap) — the
+      // core watchlist up top, everything else below. Doesn't affect the Worker call,
+      // which still fetches all of TICKERS in one request.
+      var TOP_TICKERS = ["TSLA","SPCX","GOOGL","META","MSFT","NVDA","AMZN","AAPL"];
       var WORKER_URL = "https://stock-watchlist-proxy.pawan227.workers.dev/";
 
       var COLS = ["7d","15d","30d","90d","180d","365d"];
@@ -518,11 +524,7 @@
         return '<div class="card" style="border-left-color:' + borderColor + ';">' + head + signalRow + badges + stickerRow + grid + newsRow + '</div>';
       }
 
-      function render(sortBy) {
-        var container = document.getElementById("rows");
-        if (!lastData.length) return;
-
-        var rows = lastData.slice();
+      function sortRows(rows, sortBy) {
         rows.forEach(function (r) { r._deepest = r.error ? null : deepestOf(r); });
 
         if (sortBy === "severity") {
@@ -542,8 +544,17 @@
         } else if (sortBy === "price") {
           rows.sort(function (a, b) { return (b.price || 0) - (a.price || 0); });
         }
+        return rows;
+      }
 
-        container.innerHTML = rows.map(buildCard).join("");
+      function render(sortBy) {
+        if (!lastData.length) return;
+
+        var top = lastData.filter(function (r) { return TOP_TICKERS.indexOf(r.symbol) !== -1; });
+        var rest = lastData.filter(function (r) { return TOP_TICKERS.indexOf(r.symbol) === -1; });
+
+        document.getElementById("rows-top").innerHTML = sortRows(top, sortBy).map(buildCard).join("");
+        document.getElementById("rows-rest").innerHTML = sortRows(rest, sortBy).map(buildCard).join("");
       }
 
       function setLoading(isLoading) {
@@ -555,7 +566,8 @@
       function loadData() {
         setLoading(true);
         lastData = [];
-        document.getElementById("rows").innerHTML = '<div class="empty-state">Loading…</div>';
+        document.getElementById("rows-top").innerHTML = '<div class="empty-state">Loading…</div>';
+        document.getElementById("rows-rest").innerHTML = '';
         document.getElementById("updatedLabel").textContent = "Loading…";
 
         var url = WORKER_URL + "?symbols=" + encodeURIComponent(TICKERS.join(","));
@@ -572,8 +584,9 @@
             setLoading(false);
           })
           .catch(function (err) {
-            document.getElementById("rows").innerHTML =
+            document.getElementById("rows-top").innerHTML =
               '<div class="empty-state">Could not load data: ' + err.message + '</div>';
+            document.getElementById("rows-rest").innerHTML = '';
             document.getElementById("updatedLabel").textContent = "Not loaded yet";
             setLoading(false);
           });
