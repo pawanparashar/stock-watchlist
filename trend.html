@@ -34,7 +34,7 @@
         padding: 10px 14px;
         margin: 10px 0 20px;
       }
-      .controls { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+      .controls { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
       .updated { font-size: 12px; color: var(--text-muted); }
       button#refreshBtn {
         font-size: 13px;
@@ -47,44 +47,56 @@
         cursor: pointer;
       }
       button#refreshBtn:disabled { opacity: 0.6; cursor: default; }
-      .section-title { font-size: 15px; font-weight: 700; margin: 30px 0 2px; }
-      .section-sub { font-size: 12px; color: var(--text-muted); margin-bottom: 10px; }
-      .list { display: flex; flex-direction: column; gap: 6px; }
-      .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-      @media (max-width: 600px) { .two-col { grid-template-columns: 1fr; } }
-      .col-title { font-size: 11px; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.4px; }
-      .trend-row {
-        display: flex;
-        align-items: center;
-        gap: 14px;
+      .legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 11px; color: var(--text-secondary); margin-bottom: 16px; }
+      .legend span { display: inline-flex; align-items: center; gap: 4px; }
+      .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; }
+      #result { display: flex; flex-direction: column; gap: 14px; }
+      .card {
         border: 1px solid var(--border);
         border-radius: var(--radius);
-        padding: 10px 14px;
         background: #fff;
+        overflow: hidden;
       }
-      .trend-rank {
-        font-size: 15px;
+      .verdict-strip {
+        font-size: 12px;
         font-weight: 700;
-        color: var(--text-muted);
-        width: 22px;
-        flex-shrink: 0;
-        text-align: center;
+        letter-spacing: 0.4px;
+        text-transform: uppercase;
+        padding: 6px 14px;
       }
-      .trend-main { flex: 1; min-width: 0; }
-      .trend-ticker { font-size: 15px; font-weight: 600; }
-      .trend-price { font-size: 13px; font-weight: 400; color: var(--text-secondary); margin-left: 6px; }
-      .trend-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-      .signal-badge { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 10px; white-space: nowrap; }
-      .trend-stats { text-align: right; flex-shrink: 0; }
-      .trend-vol { font-size: 13px; font-weight: 700; color: #042C53; }
-      .trend-change { font-size: 12px; margin-top: 2px; }
-      .trend-news-row { display: flex; gap: 10px; border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 14px; background: #fff; }
-      .trend-news-ticker { font-size: 13px; font-weight: 700; flex-shrink: 0; width: 48px; }
-      .trend-news-body { font-size: 12px; color: var(--text-secondary); }
-      .trend-news-body a { color: var(--text-secondary); text-decoration: none; }
-      .trend-news-body a:hover { text-decoration: underline; }
-      .trend-news-meta { color: var(--text-muted); }
-      .empty-state { text-align: center; color: var(--text-muted); font-size: 13px; padding: 24px 0; }
+      .card-body { padding: 12px 14px; }
+      .card-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 8px;
+      }
+      .ticker-price { display: flex; align-items: baseline; gap: 10px; }
+      .ticker { font-size: 16px; font-weight: 600; }
+      .price { font-size: 15px; }
+      .atr-value { font-size: 11px; color: var(--text-muted); }
+      .badge { font-size: 12px; font-weight: 500; padding: 3px 10px; border-radius: 12px; }
+      .no-signal { font-size: 12px; color: var(--text-muted); }
+      .signal-badge { display: inline-block; font-size: 13px; font-weight: 700; padding: 5px 14px; border-radius: 14px; margin-bottom: 10px; }
+      .vol-confirm-badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 14px; margin: 0 0 10px 6px; background: #FFFFFF; color: #0C447C; border: 1.5px solid #378ADD; }
+      .sparkline-wrap { margin-bottom: 10px; }
+      .sparkline { display: block; width: 100%; height: auto; }
+      .chart-label { font-size: 10px; fill: var(--text-muted); }
+      .sizing-row { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+      .badges-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+      .indicator-badge { font-size: 11px; padding: 3px 9px; border-radius: 12px; white-space: nowrap; }
+      .windows-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(84px, 1fr)); gap: 10px; }
+      .win-label { font-size: 11px; color: var(--text-muted); margin-bottom: 2px; }
+      .win-low { font-size: 13px; }
+      .win-high { font-size: 12px; color: var(--text-secondary); }
+      .win-na { font-size: 12px; color: var(--text-muted); }
+      .news-row { font-size: 11px; color: var(--text-secondary); margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border); }
+      .news-row a { color: var(--text-secondary); text-decoration: none; }
+      .news-row a:hover { text-decoration: underline; }
+      .news-meta { color: var(--text-muted); }
+      .empty-state { text-align: center; color: var(--text-muted); font-size: 13px; padding: 40px 0; }
       .footer { text-align: center; color: var(--text-muted); font-size: 12px; margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--border); }
       .footer a { color: var(--text-secondary); text-decoration: none; }
       .footer a:hover { text-decoration: underline; }
@@ -161,11 +173,14 @@
       </div>
 
       <h1>Trend Watch</h1>
-      <div class="sub">A weekend scan of your watchlist — what's worth a closer look before Monday/Tuesday.</div>
+      <div class="sub">The 12 most decisive tickers in your watchlist right now — full cards, each tagged with a verdict.</div>
       <div class="note">
-        Everything below is computed from last close, so a weekend read reflects Friday's data. Not included:
-        an earnings calendar — that needs a data source this app doesn't currently have. Nothing here is a
-        buy/sell instruction; it's a shortlist of what to go research further.
+        <strong>Verdict</strong> compares the top-line signal (Entry/Watch/Exit) against its own supporting
+        context — volume direction, relative strength vs. SPY, and Risk:Reward. <strong>Buy</strong>/<strong>Sell</strong>
+        means everything points the same way. <strong>Signals Disagreeing</strong> means the headline signal
+        and its supporting context contradict each other — worth reading closely, not skipping. Tickers stuck
+        at Watch with nothing decisive underneath don't make this list at all. Everything reflects last close;
+        not included: an earnings calendar (no data source for it yet). Nothing here is a buy/sell instruction.
       </div>
 
       <div class="controls">
@@ -173,41 +188,16 @@
         <span class="updated" id="updatedLabel"></span>
       </div>
 
-      <div class="section-title">Unusual Volume</div>
-      <div class="section-sub">Today's volume vs. each ticker's own 20-day average — surfaces unusual activity rather than always the same mega caps.</div>
-      <div id="volResult" class="list">
+      <div class="legend">
+        <span><span class="swatch" style="background:#B7DDAC;"></span>Buy</span>
+        <span><span class="swatch" style="background:#E9A6A6;"></span>Sell</span>
+        <span><span class="swatch" style="background:#FAEEDA;"></span>Signals disagreeing</span>
+        <span><span class="swatch" style="background:#F1EFE8;"></span>Neutral</span>
+      </div>
+
+      <div id="result">
         <div class="empty-state">Click Refresh to load this week's activity.</div>
       </div>
-
-      <div class="section-title">New Highs &amp; Lows</div>
-      <div class="section-sub">Tickers currently trading outside their recent range — the same break badges shown on the main watchlist, gathered here for a quick scan.</div>
-      <div class="two-col">
-        <div>
-          <div class="col-title">New highs</div>
-          <div id="highsResult" class="list"></div>
-        </div>
-        <div>
-          <div class="col-title">New lows</div>
-          <div id="lowsResult" class="list"></div>
-        </div>
-      </div>
-
-      <div class="section-title">RSI Extremes</div>
-      <div class="section-sub">Most stretched names by momentum — a bounce or pullback is more likely than usual, not guaranteed.</div>
-      <div class="two-col">
-        <div>
-          <div class="col-title">Most oversold</div>
-          <div id="oversoldResult" class="list"></div>
-        </div>
-        <div>
-          <div class="col-title">Most overbought</div>
-          <div id="overboughtResult" class="list"></div>
-        </div>
-      </div>
-
-      <div class="section-title">Recent News</div>
-      <div class="section-sub">Latest headline per ticker from the last 48 hours — a pointer to go read, not a ranked signal.</div>
-      <div id="newsResult" class="list"></div>
 
       <div class="footer">
         <a href="search.html">Sticker search</a>
@@ -219,36 +209,67 @@
       // Same watchlist as index.html — kept in sync manually since this is a
       // static site with no shared-component build step.
       var TICKERS = ["AAPL","NVDA","GOOGL","AMZN","GOOG","AVGO","META","TSLA","MU","AMD","INTC","CAT","NFLX","SPCX","CRM","NOW","PANW","DOCU","MSFT","PLTR","NBIS","SOFI","BABA","IREN","WMT","FIG","COST","UBER"];
+      var CARD_LIMIT = 12;
 
       var COLS = ["7d","15d","30d","90d","180d","365d"];
-      var DAY_ORDER = { "7d": 1, "15d": 2, "30d": 3, "90d": 4, "180d": 5, "365d": 6 };
       var LOW_BREAK_VOTE = { "7d": 1, "15d": 1, "30d": 2, "90d": 2, "180d": 3, "365d": 3 };
       var HIGH_BREAK_VOTE = { "7d": -1, "15d": -1, "30d": -2, "90d": -2, "180d": -3, "365d": -3 };
+      // rank: distance from "Watch" (3) doubles as a conviction score used to
+      // pick the CARD_LIMIT most decisive tickers — Entry+/Exit+ (most extreme)
+      // sort above plain Entry/Exit, which sort above Watch.
       var SIGNAL_TIERS = [
-        { min: 5,           label: "Entry+",  bg: "#B7DDAC", text: "#1B4D0F" },
-        { min: 2,           label: "Entry",   bg: "#EAF3DE", text: "#27500A" },
-        { min: -1,          label: "Watch",   bg: "#F1EFE8", text: "#6B6A63" },
-        { min: -4,          label: "Exit",    bg: "#FCEBEB", text: "#501313" },
-        { min: -Infinity,   label: "Exit+",   bg: "#E9A6A6", text: "#4A0A0A" }
+        { min: 5,           label: "Entry+",  bg: "#B7DDAC", text: "#1B4D0F", rank: 5 },
+        { min: 2,           label: "Entry",   bg: "#EAF3DE", text: "#27500A", rank: 4 },
+        { min: -1,          label: "Watch",   bg: "#F1EFE8", text: "#6B6A63", rank: 3 },
+        { min: -4,          label: "Exit",    bg: "#FCEBEB", text: "#501313", rank: 2 },
+        { min: -Infinity,   label: "Exit+",   bg: "#E9A6A6", text: "#4A0A0A", rank: 1 }
       ];
-      // Same break-badge colors as index.html/search.html — used here to
-      // color the New Highs/Lows section consistently with the main watchlist.
       var STYLE = {
-        "7d":   { bg: "#FAEEDA", text: "#633806", label: "Below 7d low" },
-        "15d":  { bg: "#FAC775", text: "#633806", label: "Below 15d low" },
-        "30d":  { bg: "#EF9F27", text: "#412402", label: "Below 30d low" },
-        "90d":  { bg: "#BA7517", text: "#FAEEDA", label: "Below 90d low" },
-        "180d": { bg: "#F7C1C1", text: "#501313", label: "Below 180d low" },
-        "365d": { bg: "#E24B4A", text: "#FCEBEB", label: "Below 365d low" }
+        "7d":   { border: "#EF9F27", bg: "#FAEEDA", text: "#633806", label: "Below 7d low" },
+        "15d":  { border: "#EF9F27", bg: "#FAC775", text: "#633806", label: "Below 15d low" },
+        "30d":  { border: "#BA7517", bg: "#EF9F27", text: "#412402", label: "Below 30d low" },
+        "90d":  { border: "#854F0B", bg: "#BA7517", text: "#FAEEDA", label: "Below 90d low" },
+        "180d": { border: "#A32D2D", bg: "#F7C1C1", text: "#501313", label: "Below 180d low" },
+        "365d": { border: "#791F1F", bg: "#E24B4A", text: "#FCEBEB", label: "Below 365d low" }
       };
       var HIGH_STYLE = {
-        "7d":   { bg: "#E6F1FB", text: "#0D3E68", label: "Above 7d high" },
-        "15d":  { bg: "#B9D9F5", text: "#0D3E68", label: "Above 15d high" },
-        "30d":  { bg: "#7FB8E6", text: "#0B2540", label: "Above 30d high" },
-        "90d":  { bg: "#4A93D1", text: "#FBFAF7", label: "Above 90d high" },
-        "180d": { bg: "#1E5C96", text: "#FBFAF7", label: "Above 180d high" },
-        "365d": { bg: "#0D3E68", text: "#FBFAF7", label: "Above 365d high" }
+        "7d":   { border: "#4A93D1", bg: "#E6F1FB", text: "#0D3E68", label: "Above 7d high" },
+        "15d":  { border: "#2F7FCB", bg: "#B9D9F5", text: "#0D3E68", label: "Above 15d high" },
+        "30d":  { border: "#1E6BB8", bg: "#7FB8E6", text: "#0B2540", label: "Above 30d high" },
+        "90d":  { border: "#14568F", bg: "#4A93D1", text: "#FBFAF7", label: "Above 90d high" },
+        "180d": { border: "#0D3E68", bg: "#1E5C96", text: "#FBFAF7", label: "Above 180d high" },
+        "365d": { border: "#082A47", bg: "#0D3E68", text: "#FBFAF7", label: "Above 365d high" }
       };
+      var STOP_ATR_MULT = 2;
+      var VOL_CONFIRM_THRESHOLD = 1.2;
+
+      // Same localStorage signal-streak tracker as index.html/search.html —
+      // shared key, so a streak built up anywhere is visible everywhere.
+      var SIGNAL_STREAK_KEY = "pawanradar_signal_streak_v1";
+      var signalStreaks = loadSignalStreaks();
+
+      function loadSignalStreaks() {
+        try {
+          var raw = localStorage.getItem(SIGNAL_STREAK_KEY);
+          return raw ? JSON.parse(raw) : {};
+        } catch (e) { return {}; }
+      }
+
+      function saveSignalStreaks() {
+        try { localStorage.setItem(SIGNAL_STREAK_KEY, JSON.stringify(signalStreaks)); } catch (e) {}
+      }
+
+      function trackSignalStreak(symbol, label) {
+        if (!label) return null;
+        var today = new Date().toISOString().slice(0, 10);
+        var prev = signalStreaks[symbol];
+        var streak;
+        if (!prev || prev.label !== label) streak = 1;
+        else if (prev.lastDate === today) streak = prev.streak;
+        else streak = prev.streak + 1;
+        signalStreaks[symbol] = { label: label, streak: streak, lastDate: today };
+        return streak;
+      }
 
       function fmt(n) {
         if (n === null || n === undefined || isNaN(n)) return "—";
@@ -285,10 +306,6 @@
         return deepest;
       }
 
-      // Same composite-signal scoring as index.html/search.html/guide.html
-      // document — duplicated here rather than shared since this is a
-      // dependency-free static site. Keep in sync by hand if the scoring
-      // model changes.
       function computeSignal(row) {
         if (row.error) return null;
         var score = 0;
@@ -331,9 +348,6 @@
         return SIGNAL_TIERS[SIGNAL_TIERS.length - 1];
       }
 
-      // 5-day price change from the daily-close sparkline the Worker already
-      // returns on every row (not gated to the main page's "top tickers" —
-      // that gate only controls whether index.html draws the chart).
       function pct5d(row) {
         var sp = row.sparkline;
         if (!sp || sp.length < 6) return null;
@@ -342,62 +356,330 @@
         return ((now - then) / then) * 100;
       }
 
-      function volumeRowHtml(row, rank) {
-        var signal = computeSignal(row);
-        var change = pct5d(row);
-        var changeColor = change === null ? "var(--text-muted)" : (change >= 0 ? "#27500A" : "#791F1F");
-        var changeText = change === null ? "—" : (change >= 0 ? "+" : "") + change.toFixed(1) + "% (5d)";
-
-        var subParts = [];
-        if (row.rsi !== null && row.rsi !== undefined) subParts.push("RSI " + row.rsi);
-        if (signal) subParts.push('<span class="signal-badge" style="background:' + signal.bg + ';color:' + signal.text + ';">' + signal.label + '</span>');
-
-        return '<div class="trend-row">' +
-          '<div class="trend-rank">' + rank + '</div>' +
-          '<div class="trend-main">' +
-            '<div class="trend-ticker">' + row.symbol + '<span class="trend-price">' + fmt(row.price) + '</span></div>' +
-            '<div class="trend-sub">' + subParts.join(" &middot; ") + '</div>' +
-          '</div>' +
-          '<div class="trend-stats">' +
-            '<div class="trend-vol">' + row.relVol.toFixed(1) + 'x volume</div>' +
-            '<div class="trend-change" style="color:' + changeColor + ';">' + changeText + '</div>' +
-          '</div>' +
-        '</div>';
+      function dayChangePct(row) {
+        var sp = row.sparkline;
+        if (!sp || sp.length < 2) return null;
+        var now = sp[sp.length - 1].c, prev = sp[sp.length - 2].c;
+        if (!prev) return null;
+        return ((now - prev) / prev) * 100;
       }
 
-      function breakoutRowHtml(row, key, styleMap) {
-        var s = styleMap[key];
-        return '<div class="trend-row">' +
-          '<div class="trend-main"><div class="trend-ticker">' + row.symbol + '<span class="trend-price">' + fmt(row.price) + '</span></div></div>' +
-          '<div class="trend-stats"><span class="signal-badge" style="background:' + s.bg + ';color:' + s.text + ';">' + s.label + '</span></div>' +
-        '</div>';
+      var spyRow = null;
+
+      function computeSizing(row) {
+        if (!row.atr || row.atr <= 0 || !row.price) return null;
+        var stopPrice = row.price - STOP_ATR_MULT * row.atr;
+        if (stopPrice <= 0) return null;
+        return { buyPrice: row.price, stopPrice: stopPrice };
       }
 
-      function rsiRowHtml(row, kind) {
-        var bg = kind === "oversold" ? "#EAF3DE" : "#FAEEDA";
-        var text = kind === "oversold" ? "#27500A" : "#633806";
-        return '<div class="trend-row">' +
-          '<div class="trend-main"><div class="trend-ticker">' + row.symbol + '<span class="trend-price">' + fmt(row.price) + '</span></div></div>' +
-          '<div class="trend-stats"><span class="signal-badge" style="background:' + bg + ';color:' + text + ';">RSI ' + row.rsi + '</span></div>' +
-        '</div>';
+      function computeTarget(row, buyPrice) {
+        for (var i = 0; i < COLS.length; i++) {
+          var w = row.windows ? row.windows[COLS[i]] : null;
+          if (w && w.high > buyPrice) return w.high;
+        }
+        var fallbackRisk = (row.atr || 0) * STOP_ATR_MULT;
+        return buyPrice + 2 * fallbackRisk;
       }
 
-      function newsItemHtml(row) {
-        var href = row.news.latestUrl ? escapeHtml(row.news.latestUrl) : "";
-        var headline = escapeHtml(row.news.latestHeadline);
-        var source = row.news.latestSource ? escapeHtml(row.news.latestSource) : "";
+      function computeExitLevels(row) {
+        if (!row.supertrend || !row.price) return null;
+        return { sellPrice: row.price, trailPrice: row.supertrend.value };
+      }
+
+      // The verdict: does everything *underneath* the headline signal agree
+      // with it, or contradict it? Entry/Entry+ is the bullish base case,
+      // Exit/Exit+ the bearish case, Watch stays Neutral regardless (there's
+      // no direction to check agreement against). Any single contradicting
+      // factor — Distribution instead of Accumulation, lagging instead of
+      // leading SPY, a poor Risk:Reward — downgrades a clean Buy/Sell into
+      // "Signals Disagreeing" rather than averaging it out, since the point
+      // is to flag the conflict for a closer look, not to smooth over it.
+      function computeVerdict(row, signal) {
+        if (!signal) return { label: "Neutral", bg: "#F1EFE8", text: "#6B6A63" };
+        var isBullish = signal.label === "Entry" || signal.label === "Entry+";
+        var isBearish = signal.label === "Exit" || signal.label === "Exit+";
+        if (!isBullish && !isBearish) return { label: "Neutral", bg: "#F1EFE8", text: "#6B6A63" };
+
+        var disagree = 0;
+
+        var chg = dayChangePct(row);
+        if (chg !== null && row.relVol !== null && row.relVol !== undefined && row.relVol >= 1.5) {
+          if (isBullish && chg < -0.1) disagree++;
+          if (isBearish && chg > 0.1) disagree++;
+        }
+
+        if (spyRow) {
+          var rowChg = pct5d(row), spyChg = pct5d(spyRow);
+          if (rowChg !== null && spyChg !== null) {
+            var diff = rowChg - spyChg;
+            if (isBullish && diff < 0) disagree++;
+            if (isBearish && diff > 0) disagree++;
+          }
+        }
+
+        if (isBullish) {
+          var s = computeSizing(row);
+          if (s) {
+            var risk = s.buyPrice - s.stopPrice;
+            var target = computeTarget(row, s.buyPrice);
+            var reward = target - s.buyPrice;
+            if (risk > 0 && reward > 0 && reward / risk < 1) disagree++;
+          }
+        }
+
+        if (disagree > 0) return { label: "Signals Disagreeing", bg: "#FAEEDA", text: "#633806" };
+        return isBullish
+          ? { label: "Buy", bg: "#B7DDAC", text: "#1B4D0F" }
+          : { label: "Sell", bg: "#E9A6A6", text: "#4A0A0A" };
+      }
+
+      function signalBadgeHtml(signal, streak) {
+        if (!signal) return "";
+        var suffix = (streak && streak > 1) ? ' <span style="opacity:0.7;">&middot; day ' + streak + '</span>' : "";
+        return '<span class="signal-badge" style="background:' + signal.bg + ';color:' + signal.text + ';">' + signal.label + suffix + '</span>';
+      }
+
+      function volConfirmBadgeHtml(signal, relVol) {
+        if (!signal || (signal.label !== "Entry" && signal.label !== "Entry+")) return "";
+        if (relVol === null || relVol === undefined || relVol < VOL_CONFIRM_THRESHOLD) return "";
+        return '<span class="vol-confirm-badge" title="Volume was ' + relVol.toFixed(1) + 'x average on this Entry — historically a stronger setup">Vol confirmed</span>';
+      }
+
+      function sizingRowHtml(row, signal) {
+        if (!signal || (signal.label !== "Entry" && signal.label !== "Entry+")) return "";
+        var s = computeSizing(row);
+        if (!s) return "";
+        var risk = s.buyPrice - s.stopPrice;
+        var target = computeTarget(row, s.buyPrice);
+        var reward = target - s.buyPrice;
+        var rrText = (risk > 0 && reward > 0) ? ' &middot; Target ~' + fmt(target) + ' (1:' + (reward / risk).toFixed(1) + ')' : '';
+        return '<div class="sizing-row">Buy ~' + fmt(s.buyPrice) + ' &middot; Stop ~' + fmt(s.stopPrice) + rrText + '</div>';
+      }
+
+      function exitRowHtml(row, signal) {
+        if (!signal || (signal.label !== "Exit" && signal.label !== "Exit+")) return "";
+        var e = computeExitLevels(row);
+        if (!e) return "";
+        return '<div class="sizing-row">Sell ~' + fmt(e.sellPrice) + ' &middot; Trail stop ~' + fmt(e.trailPrice) + '</div>';
+      }
+
+      function rsiBadgeHtml(rsi) {
+        if (rsi === null || rsi === undefined) return "";
+        var bg = "#F1EFE8", text = "#444441", label = "RSI " + rsi;
+        if (rsi <= 30) { bg = "#EAF3DE"; text = "#27500A"; label = "RSI " + rsi + " oversold"; }
+        else if (rsi >= 70) { bg = "#FAEEDA"; text = "#633806"; label = "RSI " + rsi + " overbought"; }
+        return '<span class="indicator-badge" style="background:' + bg + ';color:' + text + ';">' + label + '</span>';
+      }
+
+      function stochBadgeHtml(stoch) {
+        if (!stoch) return "";
+        var bg = "#F1EFE8", text = "#444441", label = "Stoch " + stoch.k;
+        if (stoch.oversold) { bg = "#EAF3DE"; text = "#27500A"; label = "Stoch " + stoch.k + " oversold"; }
+        else if (stoch.overbought) { bg = "#FAEEDA"; text = "#633806"; label = "Stoch " + stoch.k + " overbought"; }
+        return '<span class="indicator-badge" style="background:' + bg + ';color:' + text + ';">' + label + '</span>';
+      }
+
+      function trendBadgeHtml(trend) {
+        if (!trend) return "";
+        var up = trend === "up";
+        var bg = up ? "#EAF3DE" : "#FCEBEB";
+        var text = up ? "#27500A" : "#501313";
+        return '<span class="indicator-badge" style="background:' + bg + ';color:' + text + ';">' + (up ? "Uptrend" : "Downtrend") + '</span>';
+      }
+
+      function volBadgeHtml(row) {
+        var relVol = row.relVol;
+        if (relVol === null || relVol === undefined || relVol < 1.5) return "";
+        var chg = dayChangePct(row);
+        var label = relVol.toFixed(1) + "x volume", bg = "#E6F1FB", text = "#042C53";
+        if (chg !== null && chg > 0.1) { label = "Accumulation " + relVol.toFixed(1) + "x"; bg = "#EAF3DE"; text = "#27500A"; }
+        else if (chg !== null && chg < -0.1) { label = "Distribution " + relVol.toFixed(1) + "x"; bg = "#FCEBEB"; text = "#501313"; }
+        return '<span class="indicator-badge" style="background:' + bg + ';color:' + text + ';">' + label + '</span>';
+      }
+
+      function relStrengthBadgeHtml(row) {
+        if (!spyRow || row.symbol === "SPY") return "";
+        var rowChg = pct5d(row), spyChg = pct5d(spyRow);
+        if (rowChg === null || spyChg === null) return "";
+        var diff = rowChg - spyChg;
+        var bg = diff >= 0 ? "#EAF3DE" : "#FCEBEB";
+        var text = diff >= 0 ? "#27500A" : "#501313";
+        var label = "vs SPY (5d) " + (diff >= 0 ? "+" : "") + diff.toFixed(1) + "%";
+        return '<span class="indicator-badge" style="background:' + bg + ';color:' + text + ';">' + label + '</span>';
+      }
+
+      function macdBadgeHtml(macd) {
+        if (!macd) return "";
+        var bg = macd.bullish ? "#EAF3DE" : "#FCEBEB";
+        var text = macd.bullish ? "#27500A" : "#501313";
+        return '<span class="indicator-badge" style="background:' + bg + ';color:' + text + ';">MACD ' + (macd.bullish ? "bullish" : "bearish") + '</span>';
+      }
+
+      function adxBadgeHtml(adx) {
+        if (!adx) return "";
+        if (adx.strong) return '<span class="indicator-badge" style="background:#EDE7F6;color:#3B2A66;">Strong trend (ADX ' + adx.value + ')</span>';
+        if (adx.value < 20) return '<span class="indicator-badge" style="background:#F1EFE8;color:#6B6A63;">Weak trend (ADX ' + adx.value + ')</span>';
+        return "";
+      }
+
+      function supertrendBadgeHtml(st) {
+        if (!st) return "";
+        var up = st.direction === "up";
+        var bg = up ? "#EAF3DE" : "#FCEBEB";
+        var text = up ? "#27500A" : "#501313";
+        return '<span class="indicator-badge" style="background:' + bg + ';color:' + text + ';">Supertrend ' + (up ? "▲" : "▼") + ' ' + fmt(st.value) + '</span>';
+      }
+
+      function bbandsBadgeHtml(bb) {
+        if (!bb || !bb.breach) return "";
+        var upper = bb.breach === "upper";
+        var bg = upper ? "#FAEEDA" : "#EAF3DE";
+        var text = upper ? "#633806" : "#27500A";
+        return '<span class="indicator-badge" style="background:' + bg + ';color:' + text + ';">' + (upper ? "Above upper band" : "Below lower band") + '</span>';
+      }
+
+      function formatChartDate(isoDate) {
+        var months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+        var parts = isoDate.split("-");
+        return months[parseInt(parts[1], 10) - 1] + " " + parseInt(parts[2], 10);
+      }
+
+      function sparklineHtml(row, signal) {
+        var points_in = row.sparkline;
+        if (!points_in || points_in.length < 2) return "";
+        var closes = points_in.map(function (p) { return p.c; });
+
+        var w = 600, h = 150;
+        var padL = 54, padR = 10, padT = 14, padB = 24;
+        var plotW = w - padL - padR, plotH = h - padT - padB;
+
+        var min = Math.min.apply(null, closes), max = Math.max.apply(null, closes);
+        var sizing = (signal && (signal.label === "Entry" || signal.label === "Entry+")) ? computeSizing(row) : null;
+        if (sizing) {
+          min = Math.min(min, sizing.stopPrice);
+          max = Math.max(max, sizing.buyPrice);
+        }
+        var exitLevels = (signal && (signal.label === "Exit" || signal.label === "Exit+")) ? computeExitLevels(row) : null;
+        if (exitLevels) {
+          min = Math.min(min, exitLevels.sellPrice, exitLevels.trailPrice);
+          max = Math.max(max, exitLevels.sellPrice, exitLevels.trailPrice);
+        }
+        var span = (max - min) || 1;
+        var pad = span * 0.06;
+        min -= pad; max += pad; span = max - min;
+
+        function x(i) { return padL + (i / (closes.length - 1)) * plotW; }
+        function y(v) { return padT + (1 - (v - min) / span) * plotH; }
+
+        var svg = '<svg class="sparkline" viewBox="0 0 ' + w + ' ' + h + '">';
+
+        [max - pad, (max - pad + min + pad) / 2, min + pad].forEach(function (p) {
+          var yy = y(p).toFixed(1);
+          svg += '<line x1="' + padL + '" y1="' + yy + '" x2="' + (w - padR) + '" y2="' + yy + '" stroke="var(--border)" stroke-width="0.5"/>';
+          svg += '<text x="' + (padL - 6) + '" y="' + (parseFloat(yy) + 3) + '" text-anchor="end" class="chart-label">' + fmt(p) + '</text>';
+        });
+
+        svg += '<text x="' + padL + '" y="' + (h - 6) + '" text-anchor="start" class="chart-label">' + formatChartDate(points_in[0].t) + '</text>';
+        svg += '<text x="' + (w - padR) + '" y="' + (h - 6) + '" text-anchor="end" class="chart-label">' + formatChartDate(points_in[points_in.length - 1].t) + '</text>';
+
+        if (sizing) {
+          var stopY = y(sizing.stopPrice).toFixed(1), buyY = y(sizing.buyPrice).toFixed(1);
+          svg += '<line x1="' + padL + '" y1="' + stopY + '" x2="' + (w - padR) + '" y2="' + stopY + '" stroke="#A32D2D" stroke-width="1" stroke-dasharray="4 3"/>';
+          svg += '<text x="' + (w - padR - 4) + '" y="' + (parseFloat(stopY) - 4) + '" text-anchor="end" class="chart-label" style="fill:#A32D2D">stop ' + fmt(sizing.stopPrice) + '</text>';
+          svg += '<line x1="' + padL + '" y1="' + buyY + '" x2="' + (w - padR) + '" y2="' + buyY + '" stroke="#27500A" stroke-width="1" stroke-dasharray="4 3"/>';
+          svg += '<text x="' + (w - padR - 4) + '" y="' + (parseFloat(buyY) - 4) + '" text-anchor="end" class="chart-label" style="fill:#27500A">buy ' + fmt(sizing.buyPrice) + '</text>';
+        }
+
+        if (exitLevels) {
+          var sellY = y(exitLevels.sellPrice).toFixed(1), trailY = y(exitLevels.trailPrice).toFixed(1);
+          svg += '<line x1="' + padL + '" y1="' + sellY + '" x2="' + (w - padR) + '" y2="' + sellY + '" stroke="#791F1F" stroke-width="1" stroke-dasharray="4 3"/>';
+          svg += '<text x="' + (w - padR - 4) + '" y="' + (parseFloat(sellY) - 4) + '" text-anchor="end" class="chart-label" style="fill:#791F1F">sell ' + fmt(exitLevels.sellPrice) + '</text>';
+          svg += '<line x1="' + padL + '" y1="' + trailY + '" x2="' + (w - padR) + '" y2="' + trailY + '" stroke="#854F0B" stroke-width="1" stroke-dasharray="4 3"/>';
+          svg += '<text x="' + (w - padR - 4) + '" y="' + (parseFloat(trailY) - 4) + '" text-anchor="end" class="chart-label" style="fill:#854F0B">trail stop ' + fmt(exitLevels.trailPrice) + '</text>';
+        }
+
+        var linePoints = closes.map(function (v, i) { return x(i).toFixed(1) + "," + y(v).toFixed(1); }).join(" ");
+        var lineColor = closes[closes.length - 1] >= closes[0] ? "#27500A" : "#791F1F";
+        svg += '<polyline points="' + linePoints + '" fill="none" stroke="' + lineColor + '" stroke-width="1.75"/>';
+        svg += '</svg>';
+        return '<div class="sparkline-wrap">' + svg + '</div>';
+      }
+
+      function newsRowHtml(news) {
+        if (!news || !news.latestHeadline) return "";
+        var href = news.latestUrl ? escapeHtml(news.latestUrl) : "";
+        var headline = escapeHtml(news.latestHeadline);
+        var source = news.latestSource ? escapeHtml(news.latestSource) : "";
         var link = href
           ? '<a href="' + href + '" target="_blank" rel="noopener noreferrer">' + headline + '</a>'
           : headline;
-        return '<div class="trend-news-row">' +
-          '<div class="trend-news-ticker">' + row.symbol + '</div>' +
-          '<div class="trend-news-body">' + link + (source ? ' <span class="trend-news-meta">(' + source + ')</span>' : '') + '</div>' +
-        '</div>';
+        return '<div class="news-row">News: ' + link +
+          (source ? ' <span class="news-meta">(' + source + ')</span>' : '') +
+          '</div>';
       }
 
-      function renderList(elId, items, emptyText) {
-        var el = document.getElementById(elId);
-        el.innerHTML = items.length ? items.join("") : '<div class="empty-state">' + emptyText + '</div>';
+      function buildCard(row) {
+        var deepest = deepestOf(row);
+        var deepestHigh = deepest ? null : deepestHighOf(row);
+        var s = deepest ? STYLE[deepest] : (deepestHigh ? HIGH_STYLE[deepestHigh] : null);
+
+        var signal = computeSignal(row);
+        var streak = signal ? trackSignalStreak(row.symbol, signal.label) : null;
+        var verdict = computeVerdict(row, signal);
+
+        var head = '<div class="card-head">' +
+          '<div class="ticker-price"><span class="ticker">' + row.symbol + '</span>' +
+          '<span class="price">' + fmt(row.price) + '</span>' +
+          (row.atr !== null && row.atr !== undefined ? '<span class="atr-value">ATR ' + fmt(row.atr) + '</span>' : '') +
+          '</div>';
+        if (s) {
+          head += '<span class="badge" style="background:' + s.bg + ';color:' + s.text + ';">' + s.label + '</span>';
+        } else {
+          head += '<span class="no-signal">No new low/high</span>';
+        }
+        head += '</div>';
+
+        var signalRow = signal ? '<div>' + signalBadgeHtml(signal, streak) + volConfirmBadgeHtml(signal, row.relVol) + sizingRowHtml(row, signal) + exitRowHtml(row, signal) + '</div>' : '';
+
+        var badges = '<div class="badges-row">' +
+          rsiBadgeHtml(row.rsi) +
+          stochBadgeHtml(row.stochastic) +
+          trendBadgeHtml(row.trend) +
+          volBadgeHtml(row) +
+          relStrengthBadgeHtml(row) +
+          macdBadgeHtml(row.macd) +
+          adxBadgeHtml(row.adx) +
+          supertrendBadgeHtml(row.supertrend) +
+          bbandsBadgeHtml(row.bbands) +
+          '</div>';
+
+        var grid = '<div class="windows-grid">';
+        for (var i = 0; i < COLS.length; i++) {
+          var c = COLS[i];
+          var w = row.windows ? row.windows[c] : null;
+          grid += '<div><div class="win-label">' + c + '</div>';
+          if (!w) {
+            grid += '<div class="win-na">insufficient history</div>';
+          } else {
+            var brokenLow = row.price < w.low;
+            var brokenHigh = row.price > w.high;
+            var lowColor = brokenLow ? STYLE[c].border : "var(--text-primary)";
+            var highColor = brokenHigh ? HIGH_STYLE[c].border : "var(--text-secondary)";
+            grid += '<div class="win-low" style="font-weight:' + (brokenLow ? "600" : "400") + ';color:' + lowColor + ';">L ' + fmt(w.low) + '</div>';
+            grid += '<div class="win-high" style="font-weight:' + (brokenHigh ? "600" : "400") + ';color:' + highColor + ';">H ' + fmt(w.high) + '</div>';
+          }
+          grid += '</div>';
+        }
+        grid += '</div>';
+
+        var spark = sparklineHtml(row, signal);
+        var newsRow = newsRowHtml(row.news);
+
+        return '<div class="card">' +
+          '<div class="verdict-strip" style="background:' + verdict.bg + ';color:' + verdict.text + ';">' + verdict.label + '</div>' +
+          '<div class="card-body">' + head + signalRow + badges + spark + grid + newsRow + '</div>' +
+        '</div>';
       }
 
       function setLoading(isLoading) {
@@ -408,12 +690,12 @@
 
       function loadTrend() {
         setLoading(true);
+        document.getElementById("result").innerHTML = '<div class="empty-state">Loading…</div>';
         document.getElementById("updatedLabel").textContent = "";
-        ["volResult", "highsResult", "lowsResult", "oversoldResult", "overboughtResult", "newsResult"].forEach(function (id) {
-          document.getElementById(id).innerHTML = '<div class="empty-state">Loading…</div>';
-        });
 
-        var url = WORKER_URL + "?symbols=" + encodeURIComponent(TICKERS.join(","));
+        // SPY is appended purely as the relative-strength benchmark — filtered
+        // out below so it never appears as its own card.
+        var url = WORKER_URL + "?symbols=" + encodeURIComponent(TICKERS.concat(["SPY"]).join(","));
         fetch(url)
           .then(function (res) {
             if (!res.ok) throw new Error("Request failed: " + res.status);
@@ -421,52 +703,29 @@
           })
           .then(function (json) {
             if (json.error) throw new Error(json.error);
-            var rows = json.data || [];
-            var clean = rows.filter(function (r) { return !r.error; });
+            var all = json.data || [];
+            spyRow = all.filter(function (r) { return r.symbol === "SPY"; })[0] || null;
+            var clean = all.filter(function (r) { return r.symbol !== "SPY" && !r.error; });
 
-            // Unusual Volume
-            var volRows = clean.filter(function (r) { return r.relVol !== null && r.relVol !== undefined; });
-            volRows.sort(function (a, b) { return b.relVol - a.relVol; });
-            renderList("volResult", volRows.slice(0, 8).map(function (r, i) { return volumeRowHtml(r, i + 1); }), "No volume data available.");
-
-            // New Highs / New Lows
-            var highs = [], lows = [];
-            clean.forEach(function (r) {
-              var dLow = deepestOf(r);
-              if (dLow) { lows.push({ row: r, key: dLow }); return; }
-              var dHigh = deepestHighOf(r);
-              if (dHigh) highs.push({ row: r, key: dHigh });
+            clean.forEach(function (r) { r._signal = computeSignal(r); });
+            clean.sort(function (a, b) {
+              var rankA = a._signal ? Math.abs(a._signal.rank - 3) : 0;
+              var rankB = b._signal ? Math.abs(b._signal.rank - 3) : 0;
+              return rankB - rankA;
             });
-            highs.sort(function (a, b) { return DAY_ORDER[b.key] - DAY_ORDER[a.key]; });
-            lows.sort(function (a, b) { return DAY_ORDER[b.key] - DAY_ORDER[a.key]; });
-            renderList("highsResult", highs.map(function (item) { return breakoutRowHtml(item.row, item.key, HIGH_STYLE); }), "No new highs right now.");
-            renderList("lowsResult", lows.map(function (item) { return breakoutRowHtml(item.row, item.key, STYLE); }), "No new lows right now.");
+            var top = clean.slice(0, CARD_LIMIT);
 
-            // RSI Extremes
-            var oversold = clean.filter(function (r) { return r.rsi !== null && r.rsi !== undefined && r.rsi <= 30; });
-            var overbought = clean.filter(function (r) { return r.rsi !== null && r.rsi !== undefined && r.rsi >= 70; });
-            oversold.sort(function (a, b) { return a.rsi - b.rsi; });
-            overbought.sort(function (a, b) { return b.rsi - a.rsi; });
-            renderList("oversoldResult", oversold.slice(0, 5).map(function (r) { return rsiRowHtml(r, "oversold"); }), "None oversold right now.");
-            renderList("overboughtResult", overbought.slice(0, 5).map(function (r) { return rsiRowHtml(r, "overbought"); }), "None overbought right now.");
-
-            // Recent News
-            var withNews = clean.filter(function (r) { return r.news && r.news.latestHeadline; });
-            withNews.sort(function (a, b) {
-              var ta = a.news.latestAt ? new Date(a.news.latestAt).getTime() : 0;
-              var tb = b.news.latestAt ? new Date(b.news.latestAt).getTime() : 0;
-              return tb - ta;
-            });
-            renderList("newsResult", withNews.slice(0, 10).map(newsItemHtml), "No recent headlines in the last 48 hours.");
-
+            if (!top.length) {
+              document.getElementById("result").innerHTML = '<div class="empty-state">No data available.</div>';
+            } else {
+              document.getElementById("result").innerHTML = top.map(buildCard).join("");
+            }
+            saveSignalStreaks();
             document.getElementById("updatedLabel").textContent = "Updated " + new Date().toLocaleTimeString();
             setLoading(false);
           })
           .catch(function (err) {
-            renderList("volResult", [], "Could not load data: " + err.message);
-            ["highsResult", "lowsResult", "oversoldResult", "overboughtResult", "newsResult"].forEach(function (id) {
-              document.getElementById(id).innerHTML = "";
-            });
+            document.getElementById("result").innerHTML = '<div class="empty-state">Could not load data: ' + err.message + '</div>';
             setLoading(false);
           });
       }

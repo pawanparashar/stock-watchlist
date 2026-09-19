@@ -424,6 +424,30 @@
         <tr><td><code>Price high to low</code></td><td>By current share price</td></tr>
       </table>
 
+      <h2>Trend Watch verdicts</h2>
+      <p>
+        <a href="trend.html">Trend Watch</a> shows the 12 most decisive tickers in your watchlist as full
+        cards — same badges as above, plus one more thing: a colored verdict strip across the top of each
+        card. It's a second-pass check on the composite signal, not a new indicator.
+      </p>
+      <table>
+        <tr><th>Verdict</th><th>Meaning</th></tr>
+        <tr><td><span class="badge-demo" style="background:#B7DDAC;color:#1B4D0F;">Buy</span></td><td>Signal is Entry/Entry+, and every available supporting factor (volume direction, relative strength vs. SPY, Risk:Reward) agrees with it. Nothing contradicts the case.</td></tr>
+        <tr><td><span class="badge-demo" style="background:#E9A6A6;color:#4A0A0A;">Sell</span></td><td>Signal is Exit/Exit+, and every available supporting factor agrees with it.</td></tr>
+        <tr><td><span class="badge-demo" style="background:#FAEEDA;color:#633806;">Signals Disagreeing</span></td><td>Signal is Entry or Exit, but at least one supporting factor contradicts it — e.g. an Entry signal on Distribution volume, or underperforming SPY, or a poor Risk:Reward. Worth reading closely, since the top-line badge alone would look clean.</td></tr>
+        <tr><td><span class="badge-demo" style="background:#F1EFE8;color:#6B6A63;">Neutral</span></td><td>Signal is Watch — there's no direction to check agreement against.</td></tr>
+      </table>
+      <div class="note">
+        The check is binary on purpose: <em>any</em> contradicting factor downgrades a clean Buy/Sell to
+        Signals Disagreeing, rather than averaging the factors together. The point is to flag a conflict for
+        you to look at, not to quietly smooth it into a single number.
+      </div>
+      <div class="warn">
+        Tickers stuck at Watch with nothing decisive underneath don't make the top-12 list at all — Trend
+        Watch ranks by how extreme the signal is (Entry+/Exit+ first, then Entry/Exit, Watch last), so a slow
+        week can still surface mostly Watch-adjacent names if nothing stronger is happening in your watchlist.
+      </div>
+
       <div class="footer">
         <a href="trend.html">Trend watch</a>
         &middot; Parashar Radar — a personal screener, not financial advice.
