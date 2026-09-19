@@ -66,6 +66,7 @@
         display: flex;
         align-items: center;
         gap: 20px;
+        width: 100%;
         background: linear-gradient(135deg, #1a1a1a, #0b0b0b);
         border: 1px solid #2a2a2a;
         border-radius: var(--radius);
@@ -197,17 +198,120 @@
       </p>
 
       <h2>The small indicator badges</h2>
+      <p>Quick reference table, then a full breakdown of each one below with its value range and what counts as good, bad, or nothing-to-see-here.</p>
       <table>
         <tr><th>Badge</th><th>What it is</th><th>How to read it</th></tr>
-        <tr><td>RSI (Relative Strength Index)</td><td>Momentum, 0&ndash;100</td><td>&le;30 = oversold (green), &ge;70 = overbought (amber)</td></tr>
-        <tr><td>Stoch (Stochastic %K)</td><td>Momentum, 0&ndash;100</td><td>Same read as RSI: low = oversold, high = overbought</td></tr>
+        <tr><td>RSI</td><td>Momentum, 0&ndash;100</td><td>&le;30 = oversold (green), &ge;70 = overbought (amber)</td></tr>
+        <tr><td>Stoch</td><td>Momentum, 0&ndash;100</td><td>Same read as RSI: low = oversold, high = overbought</td></tr>
         <tr><td>Uptrend / Downtrend</td><td>Short-term trend direction</td><td>Green = up, red = down</td></tr>
         <tr><td>X.Xx volume</td><td>Today's volume vs. its normal average</td><td>Only shown when &ge;1.5&times; — a move on unusually heavy volume</td></tr>
         <tr><td>MACD bullish / bearish</td><td>Trend-momentum crossover indicator</td><td>Green = bullish, red = bearish</td></tr>
-        <tr><td>Strong trend / Weak trend (ADX)</td><td>Average Directional Index &mdash; how strong the trend is, not its direction</td><td>&gt;25 = strong (trust the trend badges more), &lt;20 = weak (trend badges are noise)</td></tr>
+        <tr><td>Strong trend / Weak trend (ADX)</td><td>How strong the trend is, not its direction</td><td>&gt;25 = strong (trust the trend badges more), &lt;20 = weak (trend badges are noise)</td></tr>
         <tr><td>Supertrend &#9650;/&#9660; $Z</td><td>A trend-following stop-and-reverse indicator</td><td>&#9650; green = bullish, flip price shown; &#9660; red = bearish</td></tr>
         <tr><td>Above upper band / Below lower band</td><td>Bollinger Bands breach</td><td>Below lower band = statistically stretched low; above upper = stretched high</td></tr>
       </table>
+
+      <h3>RSI (Relative Strength Index)</h3>
+      <p>
+        A momentum gauge that compares the size of recent up-moves to recent down-moves (standard 14-day
+        lookback) to answer: has this stock moved too far, too fast, in one direction?
+      </p>
+      <table>
+        <tr><th>Value</th><th>Reading</th><th>Badge shown</th></tr>
+        <tr><td>0&ndash;30</td><td><strong>Oversold</strong> — selling has been unusually heavy; a bounce is more likely than usual. Good for a dip-buy thesis.</td><td>Green, e.g. "RSI 22 oversold"</td></tr>
+        <tr><td>31&ndash;69</td><td><strong>Neutral</strong> — no strong momentum extreme in either direction. Nothing to read into it alone.</td><td>Plain grey, e.g. "RSI 53"</td></tr>
+        <tr><td>70&ndash;100</td><td><strong>Overbought</strong> — buying has been unusually heavy; a pullback is more likely than usual. Caution on new entries.</td><td>Amber, e.g. "RSI 78 overbought"</td></tr>
+      </table>
+      <div class="note">Example: AMD at RSI 65 is in the neutral zone — leaning warm but not a red flag by itself. MSFT at RSI 53 is squarely neutral. Neither tells you much on its own; it's one of several votes in the overall signal score.</div>
+      <div class="warn">Caveat: in a strong, sustained trend RSI can stay "overbought" or "oversold" for weeks — it's measuring momentum extremity, not predicting an immediate reversal.</div>
+
+      <h3>Stochastic (%K)</h3>
+      <p>
+        Similar idea to RSI but measures where today's close sits within its recent high-low trading range,
+        rather than the size of gains vs. losses. It reacts faster and swings more sharply than RSI.
+      </p>
+      <table>
+        <tr><th>Value</th><th>Reading</th><th>Badge shown</th></tr>
+        <tr><td>0&ndash;20</td><td><strong>Oversold</strong> — closing near the bottom of its recent range.</td><td>Green, e.g. "Stoch 11 oversold"</td></tr>
+        <tr><td>21&ndash;79</td><td><strong>Neutral</strong></td><td>Plain grey, e.g. "Stoch 53"</td></tr>
+        <tr><td>80&ndash;100</td><td><strong>Overbought</strong> — closing near the top of its recent range.</td><td>Amber, e.g. "Stoch 92 overbought"</td></tr>
+      </table>
+      <div class="note">Example: AMD's "Stoch 92 overbought" means it closed right at the top of its recent range — consistent with the "Above 30d high" badge on the same card. CRM's "Stoch 21" is just inside neutral, bordering oversold.</div>
+
+      <h3>Uptrend / Downtrend</h3>
+      <p>
+        A simple directional read of the short/medium-term trend (no numeric value shown — just the current
+        direction). There's no "bad" or "good" value here, only a binary state:
+      </p>
+      <table>
+        <tr><th>State</th><th>Reading</th></tr>
+        <tr><td><strong>Uptrend</strong> (green)</td><td>Favorable backdrop for buy-side setups — price direction is currently working in an Entry's favor.</td></tr>
+        <tr><td><strong>Downtrend</strong> (red)</td><td>Favorable backdrop for sell-side setups, or a reason for caution on a new long entry.</td></tr>
+      </table>
+      <div class="warn">On its own this just describes what price has been doing recently — it says nothing about how strong or reliable that trend is. Pair it with the ADX badge before trusting it.</div>
+
+      <h3>Volume multiple (X.Xx volume)</h3>
+      <p>
+        Today's trading volume divided by its normal recent average. 1.0x would mean exactly average volume;
+        the badge only appears once volume is unusual.
+      </p>
+      <table>
+        <tr><th>Value</th><th>Reading</th><th>Badge shown</th></tr>
+        <tr><td>&lt; 1.5&times;</td><td><strong>Nothing notable</strong> — ordinary volume, no real conviction signal either way.</td><td>No badge shown</td></tr>
+        <tr><td>1.5&times; &ndash; 2.9&times;</td><td><strong>Elevated</strong> — meaningfully more participation than usual behind the move.</td><td>Blue, e.g. "1.8x volume"</td></tr>
+        <tr><td>3&times;+</td><td><strong>Very heavy</strong> — a large, likely institutional or news-driven move.</td><td>Blue, e.g. "4.3x volume"</td></tr>
+      </table>
+      <div class="note">Related but separate: the green "Vol confirmed" pill on an Entry/Entry+ card triggers at a lower bar (&ge;1.2&times;) — it's a different threshold used specifically to flag Entry signals worth a bit more trust, not this badge.</div>
+
+      <h3>MACD (Moving Average Convergence Divergence)</h3>
+      <p>
+        Compares a fast moving average to a slower one to gauge whether momentum is accelerating up or down.
+        Only shown as a bullish/bearish read here, not a raw number.
+      </p>
+      <table>
+        <tr><th>State</th><th>Reading</th></tr>
+        <tr><td><strong>Bullish</strong> (green)</td><td>Short-term momentum is running above longer-term momentum — supportive of an uptrend continuing.</td></tr>
+        <tr><td><strong>Bearish</strong> (red)</td><td>Short-term momentum is running below longer-term momentum — supportive of a downtrend continuing.</td></tr>
+      </table>
+      <div class="warn">MACD is a lagging indicator — it confirms a trend that's already underway rather than predicting a turn. Don't treat a MACD flip alone as a timing trigger.</div>
+
+      <h3>ADX (Average Directional Index)</h3>
+      <p>
+        Measures how strong the current trend is — regardless of direction. This is the badge that tells you
+        how much weight to put on the Uptrend/Downtrend, MACD, and Supertrend badges.
+      </p>
+      <table>
+        <tr><th>Value</th><th>Reading</th><th>Badge shown</th></tr>
+        <tr><td>0&ndash;19</td><td><strong>Weak/no trend</strong> — price is likely chopping sideways. Trend-direction badges are unreliable here (the scoring model discounts them to zero in this range).</td><td>Grey, e.g. "Weak trend (ADX 15)"</td></tr>
+        <tr><td>20&ndash;25</td><td><strong>Developing</strong> — a trend may be forming but isn't confirmed yet.</td><td>No badge shown</td></tr>
+        <tr><td>26+</td><td><strong>Strong trend</strong> — the directional badges are more trustworthy here (the scoring model doubles their weight).</td><td>Purple, e.g. "Strong trend (ADX 32)"</td></tr>
+      </table>
+      <div class="note">Example: MSFT's "Strong trend (ADX 32)" alongside "Uptrend" and "MACD bearish" is a case worth noticing — a strong trend but with disagreeing signals underneath it is worth a closer look, not a snap read.</div>
+
+      <h3>Supertrend</h3>
+      <p>
+        A volatility-based (ATR) trailing indicator that flips between a bullish and bearish state and prints
+        a price level — that level acts as a de facto trailing stop reference.
+      </p>
+      <table>
+        <tr><th>State</th><th>Reading</th></tr>
+        <tr><td>&#9650; <strong>green, bullish</strong></td><td>Trend is up; the dollar value shown is the price at which it would flip bearish if breached to the downside.</td></tr>
+        <tr><td>&#9660; <strong>red, bearish</strong></td><td>Trend is down; the dollar value shown is the price at which it would flip bullish if breached to the upside.</td></tr>
+      </table>
+      <div class="note">This is also where the "Trail stop" reference on Exit/Exit+ cards comes from — it's literally the same number as this badge.</div>
+
+      <h3>Bollinger Bands (Above upper band / Below lower band)</h3>
+      <p>
+        Bands plotted a set statistical distance above and below a moving average, marking the range price
+        "normally" trades within. A breach means price has moved outside that normal statistical range.
+      </p>
+      <table>
+        <tr><th>State</th><th>Reading</th><th>Badge shown</th></tr>
+        <tr><td>Inside the bands</td><td><strong>Nothing notable</strong> — price is within its typical range.</td><td>No badge shown</td></tr>
+        <tr><td>Below lower band</td><td><strong>Stretched low</strong> — statistically oversold, a contrarian-bullish read similar to low RSI.</td><td>Green, "Below lower band"</td></tr>
+        <tr><td>Above upper band</td><td><strong>Stretched high</strong> — statistically overbought, a contrarian-bearish read similar to high RSI.</td><td>Amber, "Above upper band"</td></tr>
+      </table>
+      <div class="note">Example: AMD showing "Above upper band" together with "Stoch 92 overbought" and "Above 30d high" is three different lenses agreeing the stock is statistically stretched to the upside right now.</div>
 
       <h2>Sticker price row (fundamentals)</h2>
       <p>
@@ -265,10 +369,7 @@
         <tr><td><code>Price high to low</code></td><td>By current share price</td></tr>
       </table>
 
-      <div class="footer">
-        <a href="search.html">Sticker search</a>
-        &middot; Parashar Radar — a personal screener, not financial advice.
-      </div>
+      <div class="footer">Parashar Radar — a personal screener, not financial advice.</div>
     </div>
   </body>
 </html>
