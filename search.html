@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sticker Search — Parashar Radar</title>
+    <link rel="icon" type="image/png" href="assets/favicon.png" />
+    <style>
+      :root {
+        --border: #E4E1D8;
+        --text-primary: #2B2A27;
+        --text-secondary: #6B6A63;
+        --text-muted: #9B9A93;
+        --radius: 8px;
+      }
+      * { box-sizing: border-box; }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+        background: #FBFAF7;
+        color: var(--text-primary);
+        margin: 0;
+        padding: 24px 16px 60px;
+      }
+      .wrap { max-width: 760px; margin: 0 auto; }
+      a.back { font-size: 13px; color: var(--text-secondary); text-decoration: none; }
+      a.back:hover { text-decoration: underline; }
+      h1 { font-size: 20px; margin: 16px 0 4px; }
+      .sub { color: var(--text-secondary); font-size: 13px; margin-bottom: 18px; }
+      .search-row { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+      input#symbolInput {
+        font-size: 14px;
+        font-family: inherit;
+        padding: 8px 12px;
+        border-radius: 6px;
+        border: 1px solid var(--border);
+        background: #fff;
+        color: var(--text-primary);
+        flex: 1;
+        min-width: 160px;
+        text-transform: uppercase;
+      }
+      button {
+        font-size: 13px;
+        font-family: inherit;
+        padding: 8px 14px;
+        border-radius: 6px;
+        border: 1px solid var(--border);
+        background: #fff;
+        color: var(--text-primary);
+        cursor: pointer;
+      }
+      button#searchBtn {
+        background: #2B2A27;
+        color: #fff;
+        border: none;
+      }
+      button#searchBtn:disabled { opacity: 0.6; cursor: default; }
+      .status { font-size: 12px; color: var(--text-muted); margin-bottom: 14px; }
+      #result { display: flex; flex-direction: column; gap: 8px; }
+      .card {
+        border: 1px solid var(--border);
+        border-left: 4px solid var(--border);
+        border-radius: var(--radius);
+        padding: 12px 14px;
+        background: #fff;
+      }
+      .card-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 8px;
+      }
+      .ticker-price { display: flex; align-items: baseline; gap: 10px; }
+      .ticker { font-size: 16px; font-weight: 600; }
+      .price { font-size: 15px; }
+      .atr-value { font-size: 11px; color: var(--text-muted); }
+      .badge {
+        font-size: 12px;
+        font-weight: 500;
+        padding: 3px 10px;
+        border-radius: 12px;
+      }
+      .no-signal { font-size: 12px; color: var(--text-muted); }
+      .signal-badge { display: inline-block; font-size: 13px; font-weight: 700; padding: 5px 14px; border-radius: 14px; margin-bottom: 10px; }
+      .vol-confirm-badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 14px; margin: 0 0 10px 6px; background: #FFFFFF; color: #0C447C; border: 1.5px solid #378ADD; }
+      .sparkline-wrap { margin-bottom: 10px; }
+      .sparkline { display: block; width: 100%; height: auto; }
+      .chart-label { font-size: 10px; fill: var(--text-muted); }
+      .sticker-row { margin-bottom: 10px; }
+      .sticker-price-value { font-size: 14px; font-weight: 700; color: var(--text-primary); }
+      .sticker-label { font-weight: 600; font-size: 12px; padding: 2px 8px; border-radius: 10px; margin-left: 6px; }
+      .sticker-detail { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+      .sizing-row { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+      .badges-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+      .indicator-badge { font-size: 11px; padding: 3px 9px; border-radius: 12px; white-space: nowrap; }
+      .windows-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
+        gap: 10px;
+      }
+      .win-label { font-size: 11px; color: var(--text-muted); margin-bottom: 2px; }
+      .win-low { font-size: 13px; }
+      .win-high { font-size: 12px; color: var(--text-secondary); }
+      .win-na { font-size: 12px; color: var(--text-muted); }
+      .error-card { font-size: 13px; color: #A32D2D; }
+      .news-row { font-size: 11px; color: var(--text-secondary); margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border); }
+      .news-row a { color: var(--text-secondary); text-decoration: none; }
+      .news-row a:hover { text-decoration: underline; }
+      .news-meta { color: var(--text-muted); }
+      .empty-state { text-align: center; color: var(--text-muted); font-size: 13px; padding: 40px 0; }
+      .footer { text-align: center; color: var(--text-muted); font-size: 12px; margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--border); }
+      .footer a { color: var(--text-secondary); text-decoration: none; }
+      .footer a:hover { text-decoration: underline; }
+      /* Same banner markup/styling as index.html — kept in sync manually since
+         this is a static site with no shared-component build step. */
+      .banner {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        background: linear-gradient(135deg, #1a1a1a, #0b0b0b);
+        border: 1px solid #2a2a2a;
+        border-radius: var(--radius);
+        padding: 18px 26px;
+        overflow: hidden;
+        margin: 14px 0 20px;
+      }
+      .banner-half {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 50%;
+        z-index: 2;
+        transition: background 0.15s ease;
+      }
+      .banner-half:hover { background: rgba(255, 255, 255, 0.05); }
+      .banner-left { left: 0; border-radius: var(--radius) 0 0 var(--radius); }
+      .banner-right { right: 0; border-radius: 0 var(--radius) var(--radius) 0; }
+      .banner-icon { position: relative; z-index: 1; width: 56px; height: 56px; flex-shrink: 0; }
+      .banner-text { position: relative; z-index: 1; }
+      .banner-title {
+        font-size: 25px;
+        font-weight: 800;
+        letter-spacing: 0.5px;
+        background: linear-gradient(180deg, #FFE9A8, #D4A017 60%, #9C6B0A);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+      .banner-sub {
+        font-size: 11px;
+        letter-spacing: 1.5px;
+        color: #C9A227;
+        margin-top: 2px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <a class="back" href="index.html">&larr; Back to watchlist</a>
+      <div class="banner" role="group" aria-label="Parashar Radar">
+        <a class="banner-half banner-left" href="guide.html" aria-label="How to read this page" title="How to read this page"></a>
+        <a class="banner-half banner-right" href="search.html" aria-label="Sticker search" title="Sticker search"></a>
+        <svg class="banner-icon" viewBox="0 0 100 100" aria-hidden="true">
+          <defs>
+            <linearGradient id="bannerGrad" x1="0" y1="1" x2="1" y2="0">
+              <stop offset="0" stop-color="#9C6B0A" />
+              <stop offset="0.5" stop-color="#F5C542" />
+              <stop offset="1" stop-color="#FFE9A8" />
+            </linearGradient>
+          </defs>
+          <circle cx="50" cy="50" r="46" fill="none" stroke="url(#bannerGrad)" stroke-width="2" opacity="0.45" />
+          <circle cx="50" cy="50" r="34" fill="none" stroke="url(#bannerGrad)" stroke-width="2" opacity="0.6" />
+          <circle cx="50" cy="50" r="22" fill="none" stroke="url(#bannerGrad)" stroke-width="2" opacity="0.8" />
+          <polyline points="20,65 35,55 45,60 60,35 70,42" fill="none" stroke="url(#bannerGrad)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+          <polyline points="60,35 76,18" fill="none" stroke="url(#bannerGrad)" stroke-width="4" stroke-linecap="round" />
+          <polygon points="76,18 67,20 74,27" fill="url(#bannerGrad)" />
+        </svg>
+        <div class="banner-text">
+          <div class="banner-title">RESEARCH LABS</div>
+          <div class="banner-sub">SWING TRADING INTELLIGENCE &middot; TOP STOCKS RADAR</div>
+        </div>
+      </div>
+      <h1>Sticker Search</h1>
+      <div class="sub">Look up any single ticker to see the full card — signal, indicators, sticker price and price windows — same as on the main watchlist.</div>
+
+      <div class="search-row">
+        <input id="symbolInput" type="text" placeholder="e.g. COST, AMD, NFLX" autocomplete="off" />
+        <button id="searchBtn">Search</button>
+      </div>
+      <div class="status" id="statusLabel"></div>
+
+      <div id="result">
+        <div class="empty-state">Enter a ticker and click Search.</div>
+      </div>
+
+      <div class="footer">
+        <a href="guide.html">How to read this page</a>
+      </div>
+    </div>
+
+    <script>
+      // Card-building logic here (STYLE/HIGH_STYLE, computeSignal, sparklineHtml,
+      // buildCard, etc.) is a deliberate copy of index.html's — this is a plain
+      // static site with no shared JS module, so the two are kept in sync by hand.
+      // Only the entry point differs: runSearch() below fetches one symbol
+      // on demand instead of the whole watchlist on page load.
+      var WORKER_URL = "https://stock-watchlist-proxy.pawan227.workers.dev/";
+      var COLS = ["7d","15d","30d","90d","180d","365d"];
+      var STYLE = {
+        "7d":   { border: "#EF9F27", bg: "#FAEEDA", text: "#633806", label: "Below 7d low",   rank: 1 },
+        "15d":  { border: "#EF9F27", bg: "#FAC775", text: "#633806", label: "Below 15d low",  rank: 2 },
+        "30d":  { border: "#BA7517", bg: "#EF9F27", text: "#412402", label: "Below 30d low",  rank: 3 },
+        "90d":  { border: "#854F0B", bg: "#BA7517", text: "#FAEEDA", label: "Below 90d low",  rank: 4 },
+        "180d": { border: "#A32D2D", bg: "#F7C1C1", text: "#501313", label: "Below 180d low", rank: 5 },
+        "365d": { border: "#791F1F", bg: "#E24B4A", text: "#FCEBEB", label: "Below 365d low", rank: 6 }
+      };
+      var HIGH_STYLE = {
+        "7d":   { border: "#4A93D1", bg: "#E6F1FB", text: "#0D3E68", label: "Above 7d high",   rank: 1 },
+        "15d":  { border: "#2F7FCB", bg: "#B9D9F5", text: "#0D3E68", label: "Above 15d high",  rank: 2 },
+        "30d":  { border: "#1E6BB8", bg: "#7FB8E6", text: "#0B2540", label: "Above 30d high",  rank: 3 },
+        "90d":  { border: "#14568F", bg: "#4A93D1", text: "#FBFAF7", label: "Above 90d high",  rank: 4 },
+        "180d": { border: "#0D3E68", bg: "#1E5C96", text: "#FBFAF7", label: "Above 180d high", rank: 5 },
+        "365d": { border: "#082A47", bg: "#0D3E68", text: "#FBFAF7", label: "Above 365d high", rank: 6 }
+      };
+      // Stop is 2x ATR below price — a reference level only, not enforced (see
+      // index.html for the backtest note on why a hard stop here hurt returns).
+      var STOP_ATR_MULT = 2;
+      // Entry signals with volume at/above 1.2x average win noticeably more often
+      // in backtesting, so it's surfaced as a badge rather than folded into the score.
+      var VOL_CONFIRM_THRESHOLD = 1.2;
+      var SIGNAL_TIERS = [
+        { min: 5,           label: "Entry+",  bg: "#B7DDAC", text: "#1B4D0F", rank: 5 },
+        { min: 2,           label: "Entry",   bg: "#EAF3DE", text: "#27500A", rank: 4 },
+        { min: -1,          label: "Watch",   bg: "#F1EFE8", text: "#6B6A63", rank: 3 },
+        { min: -4,          label: "Exit",    bg: "#FCEBEB", text: "#501313", rank: 2 },
+        { min: -Infinity,   label: "Exit+",   bg: "#E9A6A6", text: "#4A0A0A", rank: 1 }
+      ];
+      var LOW_BREAK_VOTE = { "7d": 1, "15d": 1, "30d": 2, "90d": 2, "180d": 3, "365d": 3 };
+      var HIGH_BREAK_VOTE = { "7d": -1, "15d": -1, "30d": -2, "90d": -2, "180d": -3, "365d": -3 };
+
+      function fmt(n) {
+        if (n === null || n === undefined || isNaN(n)) return "—";
+        return "$" + n.toFixed(2);
+      }
+
+      function escapeHtml(s) {
+        if (s === null || s === undefined) return "";
+        return String(s)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#39;");
+      }
+
+      function deepestOf(row) {
+        var deepest = null;
+        for (var i = 0; i < COLS.length; i++) {
+          var c = COLS[i];
+          var w = row.windows ? row.windows[c] : null;
+          if (w && row.price < w.low) deepest = c;
+        }
+        return deepest;
+      }
+
+      function deepestHighOf(row) {
+        var deepest = null;
+        for (var i = 0; i < COLS.length; i++) {
+          var c = COLS[i];
+          var w = row.windows ? row.windows[c] : null;
+          if (w && row.price > w.high) deepest = c;
+        }
+        return deepest;
+      }
+
+      function computeSignal(row) {
+        if (row.error) return null;
+        var score = 0;
+
+        var deepest = deepestOf(row);
+        if (deepest) score += LOW_BREAK_VOTE[deepest];
+        else {
+          var deepestHigh = deepestHighOf(row);
+          if (deepestHigh) score += HIGH_BREAK_VOTE[deepestHigh];
+        }
+
+        if (row.rsi !== null && row.rsi !== undefined) {
+          if (row.rsi <= 30) score += 1;
+          else if (row.rsi >= 70) score -= 1;
+        }
+        if (row.stochastic) {
+          if (row.stochastic.oversold) score += 1;
+          else if (row.stochastic.overbought) score -= 1;
+        }
+        if (row.bbands && row.bbands.breach === "lower") score += 1;
+        else if (row.bbands && row.bbands.breach === "upper") score -= 1;
+
+        // Trend, MACD and Supertrend all answer the same "up or down" question,
+        // so they're bundled into one vote instead of three separate ones —
+        // otherwise they'd triple-count and outvote the distinct reversal
+        // indicators (RSI, Stochastic, Bollinger Bands) above.
+        var trendClusterSum = 0;
+        if (row.trend === "up") trendClusterSum += 1;
+        else if (row.trend === "down") trendClusterSum -= 1;
+        if (row.macd) trendClusterSum += row.macd.bullish ? 1 : -1;
+        if (row.supertrend) trendClusterSum += row.supertrend.direction === "up" ? 1 : -1;
+        var trendClusterVote = trendClusterSum > 0 ? 1 : (trendClusterSum < 0 ? -1 : 0);
+
+        var adxMultiplier = 1;
+        if (row.adx) {
+          if (row.adx.strong) adxMultiplier = 2;
+          else if (row.adx.value < 20) adxMultiplier = 0;
+        }
+        score += trendClusterVote * adxMultiplier;
+
+        for (var i = 0; i < SIGNAL_TIERS.length; i++) {
+          if (score >= SIGNAL_TIERS[i].min) return SIGNAL_TIERS[i];
+        }
+        return SIGNAL_TIERS[SIGNAL_TIERS.length - 1];
+      }
+
+      function signalBadgeHtml(signal) {
+        if (!signal) return "";
+        return '<span class="signal-badge" style="background:' + signal.bg + ';color:' + signal.text + ';">' + signal.label + '</span>';
+      }
+
+      function computeSizing(row) {
+        if (!row.atr || row.atr <= 0 || !row.price) return null;
+        var stopPrice = row.price - STOP_ATR_MULT * row.atr;
+        if (stopPrice <= 0) return null;
+        return { buyPrice: row.price, stopPrice: stopPrice };
+      }
+
+      function sizingRowHtml(row, signal) {
+        if (!signal || (signal.label !== "Entry" && signal.label !== "Entry+")) return "";
+        var s = computeSizing(row);
+        if (!s) return "";
+        return '<div class="sizing-row">Buy ~' + fmt(s.buyPrice) + ' &middot; Stop ~' + fmt(s.stopPrice) + '</div>';
+      }
+
+      function computeExitLevels(row) {
+        if (!row.supertrend || !row.price) return null;
+        return { sellPrice: row.price, trailPrice: row.supertrend.value };
+      }
+
+      function exitRowHtml(row, signal) {
+        if (!signal || (signal.label !== "Exit" && signal.label !== "Exit+")) return "";
+        var e = computeExitLevels(row);
+        if (!e) return "";
+        return '<div class="sizing-row">Sell ~' + fmt(e.sellPrice) + ' &middot; Trail stop ~' + fmt(e.trailPrice) + '</div>';
+      }
+
+      function volConfirmBadgeHtml(signal, relVol) {
+        if (!signal || (signal.label !== "Entry" && signal.label !== "Entry+")) return "";
+        if (relVol === null || relVol === undefined || relVol < VOL_CONFIRM_THRESHOLD) return "";
+        return '<span class="vol-confirm-badge" title="Volume was ' + relVol.toFixed(1) + 'x average on this Entry — historically a stronger setup">Vol confirmed</span>';
+      }
+
+      function rsiBadgeHtml(rsi) {
+        if (rsi === null || rsi === undefined) return "";
+        var bg = "#F1EFE8", text = "#444441", label = "RSI " + rsi;
+        if (rsi <= 30) { bg = "#EAF3DE"; text = "#27500A"; label = "RSI " + rsi + " oversold"; }
+        else if (rsi >= 70) { bg = "#FAEEDA"; text = "#633806"; label = "RSI " + rsi + " overbought"; }
+        return '<span class="indicator-badge" style="background:' + bg + ';color:' + text + ';">' + label + '</span>';
+      }
+
+      function trendBadgeHtml(trend) {
+        if (!trend) return "";
+        var up = trend === "up";
+        var bg = up ? "#EAF3DE" : "#FCEBEB";
+        var text = up ? "#27500A" : "#501313";
+        return '<span class="indicator-badge" style="background:' + bg + ';color:' + text + ';">' + (up ? "Uptrend" : "Downtrend") + '</span>';
+      }
+
+      function volBadgeHtml(relVol) {
+        if (relVol === null || relVol === undefined || relVol < 1.5) return "";
+        return '<span class="indicator-badge" style="background:#E6F1FB;color:#042C53;">' + relVol.toFixed(1) + 'x volume</span>';
+      }
+
+      function macdBadgeHtml(macd) {
+        if (!macd) return "";
+        var bg = macd.bullish ? "#EAF3DE" : "#FCEBEB";
+        var text = macd.bullish ? "#27500A" : "#501313";
+        return '<span class="indicator-badge" style="background:' + bg + ';color:' + text + ';">MACD ' + (macd.bullish ? "bullish" : "bearish") + '</span>';
+      }
+
+      function adxBadgeHtml(adx) {
+        if (!adx) return "";
+        if (adx.strong) {
+          return '<span class="indicator-badge" style="background:#EDE7F6;color:#3B2A66;">Strong trend (ADX ' + adx.value + ')</span>';
+        }
+        if (adx.value < 20) {
+          return '<span class="indicator-badge" style="background:#F1EFE8;color:#6B6A63;">Weak trend (ADX ' + adx.value + ')</span>';
+        }
+        return "";
+      }
+
+      function stochBadgeHtml(stoch) {
+        if (!stoch) return "";
+        var bg = "#F1EFE8", text = "#444441", label = "Stoch " + stoch.k;
+        if (stoch.oversold) { bg = "#EAF3DE"; text = "#27500A"; label = "Stoch " + stoch.k + " oversold"; }
+        else if (stoch.overbought) { bg = "#FAEEDA"; text = "#633806"; label = "Stoch " + stoch.k + " overbought"; }
+        return '<span class="indicator-badge" style="background:' + bg + ';color:' + text + ';">' + label + '</span>';
+      }
+
+      function supertrendBadgeHtml(st) {
+        if (!st) return "";
+        var up = st.direction === "up";
+        var bg = up ? "#EAF3DE" : "#FCEBEB";
+        var text = up ? "#27500A" : "#501313";
+        return '<span class="indicator-badge" style="background:' + bg + ';color:' + text + ';">Supertrend ' + (up ? "▲" : "▼") + ' ' + fmt(st.value) + '</span>';
+      }
+
+      function bbandsBadgeHtml(bb) {
+        if (!bb || !bb.breach) return "";
+        var upper = bb.breach === "upper";
+        var bg = upper ? "#FAEEDA" : "#EAF3DE";
+        var text = upper ? "#633806" : "#27500A";
+        return '<span class="indicator-badge" style="background:' + bg + ';color:' + text + ';">' + (upper ? "Above upper band" : "Below lower band") + '</span>';
+      }
+
+      function formatChartDate(isoDate) {
+        var months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+        var parts = isoDate.split("-");
+        return months[parseInt(parts[1], 10) - 1] + " " + parseInt(parts[2], 10);
+      }
+
+      function sparklineHtml(row, signal) {
+        var points_in = row.sparkline;
+        if (!points_in || points_in.length < 2) return "";
+        var closes = points_in.map(function (p) { return p.c; });
+
+        var w = 600, h = 150;
+        var padL = 54, padR = 10, padT = 14, padB = 24;
+        var plotW = w - padL - padR, plotH = h - padT - padB;
+
+        var min = Math.min.apply(null, closes), max = Math.max.apply(null, closes);
+        var sizing = (signal && (signal.label === "Entry" || signal.label === "Entry+")) ? computeSizing(row) : null;
+        if (sizing) {
+          min = Math.min(min, sizing.stopPrice);
+          max = Math.max(max, sizing.buyPrice);
+        }
+        var exitLevels = (signal && (signal.label === "Exit" || signal.label === "Exit+")) ? computeExitLevels(row) : null;
+        if (exitLevels) {
+          min = Math.min(min, exitLevels.sellPrice, exitLevels.trailPrice);
+          max = Math.max(max, exitLevels.sellPrice, exitLevels.trailPrice);
+        }
+        var span = (max - min) || 1;
+        var pad = span * 0.06;
+        min -= pad; max += pad; span = max - min;
+
+        function x(i) { return padL + (i / (closes.length - 1)) * plotW; }
+        function y(v) { return padT + (1 - (v - min) / span) * plotH; }
+
+        var svg = '<svg class="sparkline" viewBox="0 0 ' + w + ' ' + h + '">';
+
+        [max - pad, (max - pad + min + pad) / 2, min + pad].forEach(function (p) {
+          var yy = y(p).toFixed(1);
+          svg += '<line x1="' + padL + '" y1="' + yy + '" x2="' + (w - padR) + '" y2="' + yy + '" stroke="var(--border)" stroke-width="0.5"/>';
+          svg += '<text x="' + (padL - 6) + '" y="' + (parseFloat(yy) + 3) + '" text-anchor="end" class="chart-label">' + fmt(p) + '</text>';
+        });
+
+        svg += '<text x="' + padL + '" y="' + (h - 6) + '" text-anchor="start" class="chart-label">' + formatChartDate(points_in[0].t) + '</text>';
+        svg += '<text x="' + (w - padR) + '" y="' + (h - 6) + '" text-anchor="end" class="chart-label">' + formatChartDate(points_in[points_in.length - 1].t) + '</text>';
+
+        if (sizing) {
+          var stopY = y(sizing.stopPrice).toFixed(1), buyY = y(sizing.buyPrice).toFixed(1);
+          svg += '<line x1="' + padL + '" y1="' + stopY + '" x2="' + (w - padR) + '" y2="' + stopY + '" stroke="#A32D2D" stroke-width="1" stroke-dasharray="4 3"/>';
+          svg += '<text x="' + (w - padR - 4) + '" y="' + (parseFloat(stopY) - 4) + '" text-anchor="end" class="chart-label" style="fill:#A32D2D">stop ' + fmt(sizing.stopPrice) + '</text>';
+          svg += '<line x1="' + padL + '" y1="' + buyY + '" x2="' + (w - padR) + '" y2="' + buyY + '" stroke="#27500A" stroke-width="1" stroke-dasharray="4 3"/>';
+          svg += '<text x="' + (w - padR - 4) + '" y="' + (parseFloat(buyY) - 4) + '" text-anchor="end" class="chart-label" style="fill:#27500A">buy ' + fmt(sizing.buyPrice) + '</text>';
+        }
+
+        if (exitLevels) {
+          var sellY = y(exitLevels.sellPrice).toFixed(1), trailY = y(exitLevels.trailPrice).toFixed(1);
+          svg += '<line x1="' + padL + '" y1="' + sellY + '" x2="' + (w - padR) + '" y2="' + sellY + '" stroke="#791F1F" stroke-width="1" stroke-dasharray="4 3"/>';
+          svg += '<text x="' + (w - padR - 4) + '" y="' + (parseFloat(sellY) - 4) + '" text-anchor="end" class="chart-label" style="fill:#791F1F">sell ' + fmt(exitLevels.sellPrice) + '</text>';
+          svg += '<line x1="' + padL + '" y1="' + trailY + '" x2="' + (w - padR) + '" y2="' + trailY + '" stroke="#854F0B" stroke-width="1" stroke-dasharray="4 3"/>';
+          svg += '<text x="' + (w - padR - 4) + '" y="' + (parseFloat(trailY) - 4) + '" text-anchor="end" class="chart-label" style="fill:#854F0B">trail stop ' + fmt(exitLevels.trailPrice) + '</text>';
+        }
+
+        var linePoints = closes.map(function (v, i) { return x(i).toFixed(1) + "," + y(v).toFixed(1); }).join(" ");
+        var lineColor = closes[closes.length - 1] >= closes[0] ? "#27500A" : "#791F1F";
+        svg += '<polyline points="' + linePoints + '" fill="none" stroke="' + lineColor + '" stroke-width="1.75"/>';
+        svg += '</svg>';
+        return '<div class="sparkline-wrap">' + svg + '</div>';
+      }
+
+      function stickerRowHtml(symbol, stickerData) {
+        if (!stickerData || !stickerData.data) return "";
+        var s = stickerData.data[symbol];
+        if (!s || s.error) return "";
+
+        var price = s.currentPrice;
+        var label, bg, text;
+        if (price <= s.mosPrice) { label = "Bargain"; bg = "#EAF3DE"; text = "#27500A"; }
+        else if (price <= s.stickerPrice) { label = "Fair value"; bg = "#F1EFE8"; text = "#6B6A63"; }
+        else { label = "Above sticker"; bg = "#FCEBEB"; text = "#501313"; }
+
+        return '<div class="sticker-row">' +
+          '<span class="sticker-price-value">Sticker ' + fmt(s.stickerPrice) + '</span>' +
+          '<span class="sticker-label" style="background:' + bg + ';color:' + text + ';">' + label + '</span>' +
+          '<div class="sticker-detail">MOS ' + fmt(s.mosPrice) + ' &middot; ' + s.growthRate + '% growth</div>' +
+          '</div>';
+      }
+
+      function newsRowHtml(news) {
+        if (!news || !news.latestHeadline) return "";
+        var href = news.latestUrl ? escapeHtml(news.latestUrl) : "";
+        var headline = escapeHtml(news.latestHeadline);
+        var source = news.latestSource ? escapeHtml(news.latestSource) : "";
+        var link = href
+          ? '<a href="' + href + '" target="_blank" rel="noopener noreferrer">' + headline + '</a>'
+          : headline;
+        return '<div class="news-row">News: ' + link +
+          (source ? ' <span class="news-meta">(' + source + ')</span>' : '') +
+          '</div>';
+      }
+
+      function buildCard(row, stickerData) {
+        if (row.error) {
+          return '<div class="card"><div class="card-head"><span class="ticker">' + row.symbol +
+            '</span><span class="error-card">' + row.error + '</span></div></div>';
+        }
+
+        var deepest = deepestOf(row);
+        var deepestHigh = deepest ? null : deepestHighOf(row);
+        var s = deepest ? STYLE[deepest] : (deepestHigh ? HIGH_STYLE[deepestHigh] : null);
+        var borderColor = s ? s.border : "var(--border)";
+
+        var head = '<div class="card-head">' +
+          '<div class="ticker-price"><span class="ticker">' + row.symbol + '</span>' +
+          '<span class="price">' + fmt(row.price) + '</span>' +
+          (row.atr !== null && row.atr !== undefined ? '<span class="atr-value">ATR ' + fmt(row.atr) + '</span>' : '') +
+          '</div>';
+        if (s) {
+          head += '<span class="badge" style="background:' + s.bg + ';color:' + s.text + ';">' + s.label + '</span>';
+        } else {
+          head += '<span class="no-signal">No new low/high</span>';
+        }
+        head += '</div>';
+
+        var signal = computeSignal(row);
+        var signalRow = signal ? '<div>' + signalBadgeHtml(signal) + volConfirmBadgeHtml(signal, row.relVol) + sizingRowHtml(row, signal) + exitRowHtml(row, signal) + '</div>' : '';
+
+        var badges = '<div class="badges-row">' +
+          rsiBadgeHtml(row.rsi) +
+          stochBadgeHtml(row.stochastic) +
+          trendBadgeHtml(row.trend) +
+          volBadgeHtml(row.relVol) +
+          macdBadgeHtml(row.macd) +
+          adxBadgeHtml(row.adx) +
+          supertrendBadgeHtml(row.supertrend) +
+          bbandsBadgeHtml(row.bbands) +
+          '</div>';
+
+        var grid = '<div class="windows-grid">';
+        for (var i = 0; i < COLS.length; i++) {
+          var c = COLS[i];
+          var w = row.windows ? row.windows[c] : null;
+          grid += '<div><div class="win-label">' + c + '</div>';
+          if (!w) {
+            grid += '<div class="win-na">insufficient history</div>';
+          } else {
+            var brokenLow = row.price < w.low;
+            var brokenHigh = row.price > w.high;
+            var lowColor = brokenLow ? STYLE[c].border : "var(--text-primary)";
+            var highColor = brokenHigh ? HIGH_STYLE[c].border : "var(--text-secondary)";
+            grid += '<div class="win-low" style="font-weight:' + (brokenLow ? "600" : "400") + ';color:' + lowColor + ';">L ' + fmt(w.low) + '</div>';
+            grid += '<div class="win-high" style="font-weight:' + (brokenHigh ? "600" : "400") + ';color:' + highColor + ';">H ' + fmt(w.high) + '</div>';
+          }
+          grid += '</div>';
+        }
+        grid += '</div>';
+
+        var spark = sparklineHtml(row, signal);
+        var stickerRow = stickerRowHtml(row.symbol, stickerData);
+        var newsRow = newsRowHtml(row.news);
+
+        return '<div class="card" style="border-left-color:' + borderColor + ';">' + head + signalRow + badges + spark + stickerRow + grid + newsRow + '</div>';
+      }
+
+      function setLoading(isLoading) {
+        var btn = document.getElementById("searchBtn");
+        btn.disabled = isLoading;
+        btn.textContent = isLoading ? "Searching…" : "Search";
+      }
+
+      function runSearch() {
+        var raw = document.getElementById("symbolInput").value.trim().toUpperCase();
+        if (!raw) return;
+
+        setLoading(true);
+        document.getElementById("result").innerHTML = '<div class="empty-state">Loading…</div>';
+        document.getElementById("statusLabel").textContent = "Fetching price data…";
+
+        var priceUrl = WORKER_URL + "?symbols=" + encodeURIComponent(raw);
+        var stickerUrl = WORKER_URL + "?symbols=" + encodeURIComponent(raw) + "&mode=sticker";
+
+        Promise.all([
+          fetch(priceUrl).then(function (res) {
+            if (!res.ok) throw new Error("Request failed: " + res.status);
+            return res.json();
+          }),
+          fetch(stickerUrl).then(function (res) {
+            if (!res.ok) return { data: [] };
+            return res.json();
+          }).catch(function () { return { data: [] }; })
+        ]).then(function (results) {
+          var priceJson = results[0];
+          var stickerJson = results[1];
+          if (priceJson.error) throw new Error(priceJson.error);
+
+          var rows = priceJson.data || [];
+          if (!rows.length) throw new Error("No data returned for \"" + raw + "\"");
+
+          var bySymbol = {};
+          (stickerJson.data || []).forEach(function (row) { bySymbol[row.symbol] = row; });
+          var stickerData = { data: bySymbol };
+
+          document.getElementById("result").innerHTML = rows.map(function (row) {
+            return buildCard(row, stickerData);
+          }).join("");
+          document.getElementById("statusLabel").textContent = "Updated " + new Date().toLocaleTimeString();
+          setLoading(false);
+        }).catch(function (err) {
+          document.getElementById("result").innerHTML = '<div class="empty-state">Could not load "' + escapeHtml(raw) + '": ' + escapeHtml(err.message) + '</div>';
+          document.getElementById("statusLabel").textContent = "";
+          setLoading(false);
+        });
+      }
+
+      document.getElementById("searchBtn").addEventListener("click", runSearch);
+      document.getElementById("symbolInput").addEventListener("keydown", function (e) {
+        if (e.key === "Enter") runSearch();
+      });
+    </script>
+  </body>
+</html>

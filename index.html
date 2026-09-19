@@ -29,7 +29,48 @@
         margin-bottom: 18px;
         gap: 12px;
       }
-      .logo-banner { display: block; width: 100%; height: auto; border-radius: var(--radius); }
+      /* Banner is built from HTML/SVG rather than the old logo-header.jpg so its
+         text can be edited directly and its left/right halves can be made
+         clickable (jpg text can't be edited or split into link regions). */
+      .banner {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        background: linear-gradient(135deg, #1a1a1a, #0b0b0b);
+        border: 1px solid #2a2a2a;
+        border-radius: var(--radius);
+        padding: 18px 26px;
+        overflow: hidden;
+      }
+      .banner-half {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 50%;
+        z-index: 2;
+        transition: background 0.15s ease;
+      }
+      .banner-half:hover { background: rgba(255, 255, 255, 0.05); }
+      .banner-left { left: 0; border-radius: var(--radius) 0 0 var(--radius); }
+      .banner-right { right: 0; border-radius: 0 var(--radius) var(--radius) 0; }
+      .banner-icon { position: relative; z-index: 1; width: 56px; height: 56px; flex-shrink: 0; }
+      .banner-text { position: relative; z-index: 1; }
+      .banner-title {
+        font-size: 25px;
+        font-weight: 800;
+        letter-spacing: 0.5px;
+        background: linear-gradient(180deg, #FFE9A8, #D4A017 60%, #9C6B0A);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+      .banner-sub {
+        font-size: 11px;
+        letter-spacing: 1.5px;
+        color: #C9A227;
+        margin-top: 2px;
+      }
       .controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
       .updated { font-size: 12px; color: var(--text-muted); }
       select, button {
@@ -112,12 +153,40 @@
       .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; }
       .empty-state { text-align: center; color: var(--text-muted); font-size: 13px; padding: 40px 0; }
       .footer { text-align: center; color: var(--text-muted); font-size: 12px; margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--border); }
+      .footer a { color: var(--text-secondary); text-decoration: none; }
+      .footer a:hover { text-decoration: underline; }
     </style>
   </head>
   <body>
     <div class="wrap">
       <div class="header">
-        <img src="assets/logo-header.jpg" alt="PP Research Labs — Swing Trading Intelligence | Top PP Stocks Radar" class="logo-banner" />
+        <!-- Left half links to the reading guide, right half to ticker search —
+             the whole banner doubles as nav so those pages don't need their own
+             menu. Clicking the icon/title on this page itself is a no-op region
+             boundary, not a dead click: it's just the left half of the same link. -->
+        <div class="banner" role="group" aria-label="Parashar Radar">
+          <a class="banner-half banner-left" href="guide.html" aria-label="How to read this page" title="How to read this page"></a>
+          <a class="banner-half banner-right" href="search.html" aria-label="Sticker search" title="Sticker search"></a>
+          <svg class="banner-icon" viewBox="0 0 100 100" aria-hidden="true">
+            <defs>
+              <linearGradient id="bannerGrad" x1="0" y1="1" x2="1" y2="0">
+                <stop offset="0" stop-color="#9C6B0A" />
+                <stop offset="0.5" stop-color="#F5C542" />
+                <stop offset="1" stop-color="#FFE9A8" />
+              </linearGradient>
+            </defs>
+            <circle cx="50" cy="50" r="46" fill="none" stroke="url(#bannerGrad)" stroke-width="2" opacity="0.45" />
+            <circle cx="50" cy="50" r="34" fill="none" stroke="url(#bannerGrad)" stroke-width="2" opacity="0.6" />
+            <circle cx="50" cy="50" r="22" fill="none" stroke="url(#bannerGrad)" stroke-width="2" opacity="0.8" />
+            <polyline points="20,65 35,55 45,60 60,35 70,42" fill="none" stroke="url(#bannerGrad)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+            <polyline points="60,35 76,18" fill="none" stroke="url(#bannerGrad)" stroke-width="4" stroke-linecap="round" />
+            <polygon points="76,18 67,20 74,27" fill="url(#bannerGrad)" />
+          </svg>
+          <div class="banner-text">
+            <div class="banner-title">RESEARCH LABS</div>
+            <div class="banner-sub">SWING TRADING INTELLIGENCE &middot; TOP STOCKS RADAR</div>
+          </div>
+        </div>
         <div class="controls">
           <span class="updated" id="updatedLabel">Not loaded yet</span>
           <select id="sortSel">
@@ -155,6 +224,9 @@
       <div id="rows-rest"></div>
 
       <div class="footer">
+        <a href="guide.html">How to read this page</a>
+        &middot;
+        <a href="search.html">Sticker search</a>
         <span id="visitCount"></span>
       </div>
     </div>
