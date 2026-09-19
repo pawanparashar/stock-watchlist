@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Trend Watch — Parashar Radar</title>
+    <link rel="icon" type="image/png" href="assets/favicon.png" />
+    <style>
+      :root {
+        --border: #E4E1D8;
+        --text-primary: #2B2A27;
+        --text-secondary: #6B6A63;
+        --text-muted: #9B9A93;
+        --radius: 8px;
+      }
+      * { box-sizing: border-box; }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+        background: #FBFAF7;
+        color: var(--text-primary);
+        margin: 0;
+        padding: 24px 16px 60px;
+      }
+      .wrap { max-width: 760px; margin: 0 auto; }
+      a.back { font-size: 13px; color: var(--text-secondary); text-decoration: none; }
+      a.back:hover { text-decoration: underline; }
+      h1 { font-size: 20px; margin: 16px 0 4px; }
+      .sub { color: var(--text-secondary); font-size: 13px; margin-bottom: 6px; }
+      .note {
+        font-size: 12px;
+        color: var(--text-secondary);
+        background: #F1EFE8;
+        border-radius: var(--radius);
+        padding: 10px 14px;
+        margin: 10px 0 20px;
+      }
+      .controls { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+      .updated { font-size: 12px; color: var(--text-muted); }
+      button#refreshBtn {
+        font-size: 13px;
+        font-family: inherit;
+        padding: 6px 12px;
+        border-radius: 6px;
+        border: none;
+        background: #2B2A27;
+        color: #fff;
+        cursor: pointer;
+      }
+      button#refreshBtn:disabled { opacity: 0.6; cursor: default; }
+      #result { display: flex; flex-direction: column; gap: 6px; }
+      .trend-row {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 10px 14px;
+        background: #fff;
+      }
+      .trend-rank {
+        font-size: 15px;
+        font-weight: 700;
+        color: var(--text-muted);
+        width: 22px;
+        flex-shrink: 0;
+        text-align: center;
+      }
+      .trend-main { flex: 1; min-width: 0; }
+      .trend-ticker { font-size: 15px; font-weight: 600; }
+      .trend-price { font-size: 13px; font-weight: 400; color: var(--text-secondary); margin-left: 6px; }
+      .trend-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+      .signal-badge { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 10px; }
+      .trend-stats { text-align: right; flex-shrink: 0; }
+      .trend-vol { font-size: 13px; font-weight: 700; color: #042C53; }
+      .trend-change { font-size: 12px; margin-top: 2px; }
+      .empty-state { text-align: center; color: var(--text-muted); font-size: 13px; padding: 40px 0; }
+      .footer { text-align: center; color: var(--text-muted); font-size: 12px; margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--border); }
+      .footer a { color: var(--text-secondary); text-decoration: none; }
+      .footer a:hover { text-decoration: underline; }
+      /* Same banner markup/styling as index.html — kept in sync manually since
+         this is a static site with no shared-component build step. */
+      .banner {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        width: 100%;
+        background: linear-gradient(135deg, #1a1a1a, #0b0b0b);
+        border: 1px solid #2a2a2a;
+        border-radius: var(--radius);
+        padding: 18px 26px;
+        overflow: hidden;
+        margin: 14px 0 20px;
+      }
+      .banner-half {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 50%;
+        z-index: 2;
+        transition: background 0.15s ease;
+      }
+      .banner-half:hover { background: rgba(255, 255, 255, 0.05); }
+      .banner-left { left: 0; border-radius: var(--radius) 0 0 var(--radius); }
+      .banner-right { right: 0; border-radius: 0 var(--radius) var(--radius) 0; }
+      .banner-icon { position: relative; z-index: 1; width: 56px; height: 56px; flex-shrink: 0; }
+      .banner-text { position: relative; z-index: 1; }
+      .banner-title {
+        font-size: 25px;
+        font-weight: 800;
+        letter-spacing: 0.5px;
+        background: linear-gradient(180deg, #FFE9A8, #D4A017 60%, #9C6B0A);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+      .banner-sub {
+        font-size: 11px;
+        letter-spacing: 1.5px;
+        color: #C9A227;
+        margin-top: 2px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <a class="back" href="index.html">&larr; Back to watchlist</a>
+      <div class="banner" role="group" aria-label="Parashar Radar">
+        <a class="banner-half banner-left" href="guide.html" aria-label="How to read this page" title="How to read this page"></a>
+        <a class="banner-half banner-right" href="search.html" aria-label="Sticker search" title="Sticker search"></a>
+        <svg class="banner-icon" viewBox="0 0 100 100" aria-hidden="true">
+          <defs>
+            <linearGradient id="bannerGrad" x1="0" y1="1" x2="1" y2="0">
+              <stop offset="0" stop-color="#9C6B0A" />
+              <stop offset="0.5" stop-color="#F5C542" />
+              <stop offset="1" stop-color="#FFE9A8" />
+            </linearGradient>
+          </defs>
+          <circle cx="50" cy="50" r="46" fill="none" stroke="url(#bannerGrad)" stroke-width="2" opacity="0.45" />
+          <circle cx="50" cy="50" r="34" fill="none" stroke="url(#bannerGrad)" stroke-width="2" opacity="0.6" />
+          <circle cx="50" cy="50" r="22" fill="none" stroke="url(#bannerGrad)" stroke-width="2" opacity="0.8" />
+          <polyline points="20,65 35,55 45,60 60,35 70,42" fill="none" stroke="url(#bannerGrad)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+          <polyline points="60,35 76,18" fill="none" stroke="url(#bannerGrad)" stroke-width="4" stroke-linecap="round" />
+          <polygon points="76,18 67,20 74,27" fill="url(#bannerGrad)" />
+        </svg>
+        <div class="banner-text">
+          <div class="banner-title">RESEARCH LABS</div>
+          <div class="banner-sub">SWING TRADING INTELLIGENCE &middot; TOP STOCKS RADAR</div>
+        </div>
+      </div>
+
+      <h1>Trend Watch</h1>
+      <div class="sub">Top 10 from your watchlist by relative volume — the tickers seeing unusually heavy trading right now.</div>
+      <div class="note">
+        Ranked by today's volume vs. each ticker's own 20-day average, not raw share count — so a normally
+        quiet stock trading 3&times; its own average shows up here even if a mega-cap traded more total shares.
+        Heavy volume isn't inherently bullish or bearish by itself; read it alongside the signal and 5-day
+        change next to it, and go find out <em>why</em> before acting on it.
+      </div>
+
+      <div class="controls">
+        <button id="refreshBtn">Refresh</button>
+        <span class="updated" id="updatedLabel"></span>
+      </div>
+
+      <div id="result">
+        <div class="empty-state">Click Refresh to load this week's activity.</div>
+      </div>
+
+      <div class="footer">
+        <a href="search.html">Sticker search</a>
+      </div>
+    </div>
+
+    <script>
+      var WORKER_URL = "https://stock-watchlist-proxy.pawan227.workers.dev/";
+      // Same watchlist as index.html — kept in sync manually since this is a
+      // static site with no shared-component build step.
+      var TICKERS = ["AAPL","NVDA","GOOGL","AMZN","GOOG","AVGO","META","TSLA","MU","AMD","INTC","CAT","NFLX","SPCX","CRM","NOW","PANW","DOCU","MSFT","PLTR","NBIS","SOFI","BABA","IREN","WMT","FIG","COST","UBER"];
+
+      var COLS = ["7d","15d","30d","90d","180d","365d"];
+      var LOW_BREAK_VOTE = { "7d": 1, "15d": 1, "30d": 2, "90d": 2, "180d": 3, "365d": 3 };
+      var HIGH_BREAK_VOTE = { "7d": -1, "15d": -1, "30d": -2, "90d": -2, "180d": -3, "365d": -3 };
+      var SIGNAL_TIERS = [
+        { min: 5,           label: "Entry+",  bg: "#B7DDAC", text: "#1B4D0F" },
+        { min: 2,           label: "Entry",   bg: "#EAF3DE", text: "#27500A" },
+        { min: -1,          label: "Watch",   bg: "#F1EFE8", text: "#6B6A63" },
+        { min: -4,          label: "Exit",    bg: "#FCEBEB", text: "#501313" },
+        { min: -Infinity,   label: "Exit+",   bg: "#E9A6A6", text: "#4A0A0A" }
+      ];
+
+      function fmt(n) {
+        if (n === null || n === undefined || isNaN(n)) return "—";
+        return "$" + n.toFixed(2);
+      }
+
+      function deepestOf(row) {
+        var deepest = null;
+        for (var i = 0; i < COLS.length; i++) {
+          var c = COLS[i];
+          var w = row.windows ? row.windows[c] : null;
+          if (w && row.price < w.low) deepest = c;
+        }
+        return deepest;
+      }
+
+      function deepestHighOf(row) {
+        var deepest = null;
+        for (var i = 0; i < COLS.length; i++) {
+          var c = COLS[i];
+          var w = row.windows ? row.windows[c] : null;
+          if (w && row.price > w.high) deepest = c;
+        }
+        return deepest;
+      }
+
+      // Same composite-signal scoring as index.html/search.html/guide.html
+      // document — duplicated here rather than shared since this is a
+      // dependency-free static site. Keep in sync by hand if the scoring
+      // model changes.
+      function computeSignal(row) {
+        if (row.error) return null;
+        var score = 0;
+
+        var deepest = deepestOf(row);
+        if (deepest) score += LOW_BREAK_VOTE[deepest];
+        else {
+          var deepestHigh = deepestHighOf(row);
+          if (deepestHigh) score += HIGH_BREAK_VOTE[deepestHigh];
+        }
+
+        if (row.rsi !== null && row.rsi !== undefined) {
+          if (row.rsi <= 30) score += 1;
+          else if (row.rsi >= 70) score -= 1;
+        }
+        if (row.stochastic) {
+          if (row.stochastic.oversold) score += 1;
+          else if (row.stochastic.overbought) score -= 1;
+        }
+        if (row.bbands && row.bbands.breach === "lower") score += 1;
+        else if (row.bbands && row.bbands.breach === "upper") score -= 1;
+
+        var trendClusterSum = 0;
+        if (row.trend === "up") trendClusterSum += 1;
+        else if (row.trend === "down") trendClusterSum -= 1;
+        if (row.macd) trendClusterSum += row.macd.bullish ? 1 : -1;
+        if (row.supertrend) trendClusterSum += row.supertrend.direction === "up" ? 1 : -1;
+        var trendClusterVote = trendClusterSum > 0 ? 1 : (trendClusterSum < 0 ? -1 : 0);
+
+        var adxMultiplier = 1;
+        if (row.adx) {
+          if (row.adx.strong) adxMultiplier = 2;
+          else if (row.adx.value < 20) adxMultiplier = 0;
+        }
+        score += trendClusterVote * adxMultiplier;
+
+        for (var i = 0; i < SIGNAL_TIERS.length; i++) {
+          if (score >= SIGNAL_TIERS[i].min) return SIGNAL_TIERS[i];
+        }
+        return SIGNAL_TIERS[SIGNAL_TIERS.length - 1];
+      }
+
+      // 5-day price change from the daily-close sparkline the Worker already
+      // returns on every row (not gated to the main page's "top tickers" —
+      // that gate only controls whether index.html draws the chart).
+      function pct5d(row) {
+        var sp = row.sparkline;
+        if (!sp || sp.length < 6) return null;
+        var now = sp[sp.length - 1].c, then = sp[sp.length - 6].c;
+        if (!then) return null;
+        return ((now - then) / then) * 100;
+      }
+
+      function rankedRowHtml(row, rank) {
+        var signal = computeSignal(row);
+        var change = pct5d(row);
+        var changeColor = change === null ? "var(--text-muted)" : (change >= 0 ? "#27500A" : "#791F1F");
+        var changeText = change === null ? "—" : (change >= 0 ? "+" : "") + change.toFixed(1) + "% (5d)";
+
+        var subParts = [];
+        if (row.rsi !== null && row.rsi !== undefined) subParts.push("RSI " + row.rsi);
+        if (signal) subParts.push('<span class="signal-badge" style="background:' + signal.bg + ';color:' + signal.text + ';">' + signal.label + '</span>');
+
+        return '<div class="trend-row">' +
+          '<div class="trend-rank">' + rank + '</div>' +
+          '<div class="trend-main">' +
+            '<div class="trend-ticker">' + row.symbol + '<span class="trend-price">' + fmt(row.price) + '</span></div>' +
+            '<div class="trend-sub">' + subParts.join(" &middot; ") + '</div>' +
+          '</div>' +
+          '<div class="trend-stats">' +
+            '<div class="trend-vol">' + row.relVol.toFixed(1) + 'x volume</div>' +
+            '<div class="trend-change" style="color:' + changeColor + ';">' + changeText + '</div>' +
+          '</div>' +
+        '</div>';
+      }
+
+      function setLoading(isLoading) {
+        var btn = document.getElementById("refreshBtn");
+        btn.disabled = isLoading;
+        btn.textContent = isLoading ? "Refreshing…" : "Refresh";
+      }
+
+      function loadTrend() {
+        setLoading(true);
+        document.getElementById("result").innerHTML = '<div class="empty-state">Loading…</div>';
+        document.getElementById("updatedLabel").textContent = "";
+
+        var url = WORKER_URL + "?symbols=" + encodeURIComponent(TICKERS.join(","));
+        fetch(url)
+          .then(function (res) {
+            if (!res.ok) throw new Error("Request failed: " + res.status);
+            return res.json();
+          })
+          .then(function (json) {
+            if (json.error) throw new Error(json.error);
+            var rows = (json.data || []).filter(function (r) {
+              return !r.error && r.relVol !== null && r.relVol !== undefined;
+            });
+            rows.sort(function (a, b) { return b.relVol - a.relVol; });
+            var top = rows.slice(0, 10);
+
+            if (!top.length) {
+              document.getElementById("result").innerHTML = '<div class="empty-state">No volume data available.</div>';
+            } else {
+              document.getElementById("result").innerHTML = top.map(function (row, i) {
+                return rankedRowHtml(row, i + 1);
+              }).join("");
+            }
+            document.getElementById("updatedLabel").textContent = "Updated " + new Date().toLocaleTimeString();
+            setLoading(false);
+          })
+          .catch(function (err) {
+            document.getElementById("result").innerHTML = '<div class="empty-state">Could not load data: ' + err.message + '</div>';
+            setLoading(false);
+          });
+      }
+
+      document.getElementById("refreshBtn").addEventListener("click", loadTrend);
+    </script>
+  </body>
+</html>
