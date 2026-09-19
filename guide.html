@@ -185,7 +185,7 @@
         Entry looks more trustworthy, not a separate scored factor.
       </p>
 
-      <h3>Buy / Stop and Sell / Trail stop lines</h3>
+      <h3>Buy / Stop / Target and Sell / Trail stop lines</h3>
       <p>
         On an Entry/Entry+ card: <code>Buy ~$X</code> is just the current price, and <code>Stop ~$Y</code> is
         price minus 2&times; ATR (Average True Range) — a volatility-scaled reference for where a stop-loss
@@ -193,8 +193,50 @@
         stop at that exact distance actually hurt returns — the Exit signal is meant to do that job instead).
       </p>
       <p>
+        <code>Target ~$Z (1:R)</code> adds a reward side to that same reference: the target is the nearest
+        recent resistance level above the buy price (the closest window high that price hasn't already
+        cleared), and the ratio in parentheses is reward &divide; risk — the standard swing-trading
+        go/no-go check. If price has already cleared every window's high, there's no recent resistance left
+        to reference, so it falls back to a flat 2:1 target instead.
+      </p>
+      <div class="warn">This target is a structural reference (the nearest level price would need to reclaim), not a prediction that price will get there — treat a poor ratio (e.g. 1:0.5) as a reason to wait for a better setup, not as pressure to lower your stop to make the math work.</div>
+      <p>
         On an Exit/Exit+ card: <code>Sell ~$X</code> is the current price, and <code>Trail stop ~$Y</code> is
         the current Supertrend value — the same number shown in the Supertrend badge.
+      </p>
+
+      <h3><span class="badge-demo" style="background:#EAF3DE;color:#27500A;">Entry &middot; day 3</span></h3>
+      <p>
+        A "day N" suffix on the signal badge counts how many consecutive refreshes a ticker has held its
+        <em>current</em> signal label. A signal that just flipped today (no suffix shown, meaning day 1)
+        carries less conviction than one that's persisted for several days — day count is one more input for
+        judging how "fresh" a setup is, not a guarantee it'll keep holding.
+      </p>
+      <div class="note">
+        This is tracked in your browser's local storage, not on a server — it's specific to the device/browser
+        you're viewing from, resets if you clear site data, and only advances once per calendar day no matter
+        how many times you click Refresh. It's shared between the main watchlist and Sticker Search (same
+        underlying storage), so a streak built on one page shows up on the other too.
+      </div>
+
+      <h3>Accumulation / Distribution (volume badge)</h3>
+      <p>
+        The volume badge no longer just shows a bare multiple — it pairs volume with which way price moved
+        that day, since volume alone can't tell buying from selling (every trade has both a buyer and a
+        seller). <strong>Accumulation</strong> (green) means heavy volume on an up day — buyers were the more
+        aggressive side. <strong>Distribution</strong> (red) means heavy volume on a down day — sellers were
+        the more aggressive side. It still only appears when volume is &ge;1.5&times; average, same threshold
+        as before.
+      </p>
+      <div class="note">Example: a ticker breaking below its 30-day low on 4.3&times; volume reads very differently depending on this label — "Distribution 4.3x" confirms real selling pressure behind the drop; "Accumulation 4.3x" on the same drop would be a contradiction worth investigating (e.g. the close recovered off an intraday low).</div>
+
+      <h3>vs SPY (5d)</h3>
+      <p>
+        Relative strength against the S&amp;P 500 ETF (SPY) over the same trailing 5 trading days:
+        <code>your ticker's 5-day % change &minus; SPY's 5-day % change</code>. A positive number (green) means
+        it's outperforming the broader market over that window; negative (red) means it's lagging. Many swing
+        traders prefer buying relative strength — a dip in a name that's still beating the market is a
+        different setup than a dip in a name that's simply following the market down.
       </p>
 
       <h2>The small indicator badges</h2>

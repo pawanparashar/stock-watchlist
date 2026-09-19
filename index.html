@@ -304,11 +304,29 @@
         return { buyPrice: row.price, stopPrice: stopPrice };
       }
 
+      // Target for the Risk:Reward line: the nearest recent resistance above
+      // the buy price (the shortest window whose high still sits above it —
+      // windows nest, so the shortest such window is also the nearest level).
+      // Falls back to a flat 2:1 reward-to-risk multiple when price has
+      // already cleared every window's high (nothing left to reference).
+      function computeTarget(row, buyPrice) {
+        for (var i = 0; i < COLS.length; i++) {
+          var w = row.windows ? row.windows[COLS[i]] : null;
+          if (w && w.high > buyPrice) return w.high;
+        }
+        var fallbackRisk = (row.atr || 0) * STOP_ATR_MULT;
+        return buyPrice + 2 * fallbackRisk;
+      }
+
       function sizingRowHtml(row, signal) {
         if (!signal || (signal.label !== "Entry" && signal.label !== "Entry+")) return "";
         var s = computeSizing(row);
         if (!s) return "";
-        return '<div class="sizing-row">Buy ~' + fmt(s.buyPrice) + ' &middot; Stop ~' + fmt(s.stopPrice) + '</div>';
+        var risk = s.buyPrice - s.stopPrice;
+        var target = computeTarget(row, s.buyPrice);
+        var reward = target - s.buyPrice;
+        var rrText = (risk > 0 && reward > 0) ? ' &middot; Target ~' + fmt(target) + ' (1:' + (reward / risk).toFixed(1) + ')' : '';
+        return '<div class="sizing-row">Buy ~' + fmt(s.buyPrice) + ' &middot; Stop ~' + fmt(s.stopPrice) + rrText + '</div>';
       }
 
       // Exit-side equivalent of computeSizing/sizingRowHtml: for a position you're
@@ -511,9 +529,42 @@
         return SIGNAL_TIERS[SIGNAL_TIERS.length - 1];
       }
 
-      function signalBadgeHtml(signal) {
+      // How many consecutive refreshes (roughly, days) a symbol has held its
+      // current signal — a signal that just flipped carries less conviction
+      // than one that's persisted. Static site, no backend, so this is tracked
+      // client-side in localStorage; shared across index.html and search.html
+      // since both read/write the same key, keyed by calendar date so
+      // clicking Refresh repeatedly in one sitting doesn't inflate the count.
+      var SIGNAL_STREAK_KEY = "pawanradar_signal_streak_v1";
+      var signalStreaks = loadSignalStreaks();
+
+      function loadSignalStreaks() {
+        try {
+          var raw = localStorage.getItem(SIGNAL_STREAK_KEY);
+          return raw ? JSON.parse(raw) : {};
+        } catch (e) { return {}; }
+      }
+
+      function saveSignalStreaks() {
+        try { localStorage.setItem(SIGNAL_STREAK_KEY, JSON.stringify(signalStreaks)); } catch (e) {}
+      }
+
+      function trackSignalStreak(symbol, label) {
+        if (!label) return null;
+        var today = new Date().toISOString().slice(0, 10);
+        var prev = signalStreaks[symbol];
+        var streak;
+        if (!prev || prev.label !== label) streak = 1;
+        else if (prev.lastDate === today) streak = prev.streak;
+        else streak = prev.streak + 1;
+        signalStreaks[symbol] = { label: label, streak: streak, lastDate: today };
+        return streak;
+      }
+
+      function signalBadgeHtml(signal, streak) {
         if (!signal) return "";
-        return '<span class="signal-badge" style="background:' + signal.bg + ';color:' + signal.text + ';">' + signal.label + '</span>';
+        var suffix = (streak && streak > 1) ? ' <span style="opacity:0.7;">&middot; day ' + streak + '</span>' : "";
+        return '<span class="signal-badge" style="background:' + signal.bg + ';color:' + signal.text + ';">' + signal.label + suffix + '</span>';
       }
 
       function deepestOf(row) {
@@ -584,9 +635,37 @@
         return '<span class="indicator-badge" style="background:' + bg + ';color:' + text + ';">' + (up ? "Uptrend" : "Downtrend") + '</span>';
       }
 
-      function volBadgeHtml(relVol) {
+      // 1-day and 5-day % price change from the daily-close sparkline the
+      // Worker returns on every row.
+      function dayChangePct(row) {
+        var sp = row.sparkline;
+        if (!sp || sp.length < 2) return null;
+        var now = sp[sp.length - 1].c, prev = sp[sp.length - 2].c;
+        if (!prev) return null;
+        return ((now - prev) / prev) * 100;
+      }
+
+      function pct5d(row) {
+        var sp = row.sparkline;
+        if (!sp || sp.length < 6) return null;
+        var now = sp[sp.length - 1].c, then = sp[sp.length - 6].c;
+        if (!then) return null;
+        return ((now - then) / then) * 100;
+      }
+
+      // Volume alone can't tell you buying from selling — every trade has both
+      // a buyer and a seller. Pairing it with which way price moved on that
+      // volume is what separates "accumulation" (heavy volume, price up —
+      // buyers were the aggressor) from "distribution" (heavy volume, price
+      // down — sellers were the aggressor).
+      function volBadgeHtml(row) {
+        var relVol = row.relVol;
         if (relVol === null || relVol === undefined || relVol < 1.5) return "";
-        return '<span class="indicator-badge" style="background:#E6F1FB;color:#042C53;">' + relVol.toFixed(1) + 'x volume</span>';
+        var chg = dayChangePct(row);
+        var label = relVol.toFixed(1) + "x volume", bg = "#E6F1FB", text = "#042C53";
+        if (chg !== null && chg > 0.1) { label = "Accumulation " + relVol.toFixed(1) + "x"; bg = "#EAF3DE"; text = "#27500A"; }
+        else if (chg !== null && chg < -0.1) { label = "Distribution " + relVol.toFixed(1) + "x"; bg = "#FCEBEB"; text = "#501313"; }
+        return '<span class="indicator-badge" style="background:' + bg + ';color:' + text + ';">' + label + '</span>';
       }
 
       // Not scored — a backtest on Section 1 (n=6, too small to trust as a scoring
@@ -642,6 +721,22 @@
         return '<span class="indicator-badge" style="background:' + bg + ';color:' + text + ';">' + (upper ? "Above upper band" : "Below lower band") + '</span>';
       }
 
+      // SPY row fetched alongside the watchlist (see loadData) but never
+      // rendered as its own card — kept here just as the market benchmark
+      // for the relative-strength badge below.
+      var spyRow = null;
+
+      function relStrengthBadgeHtml(row) {
+        if (!spyRow || row.symbol === "SPY") return "";
+        var rowChg = pct5d(row), spyChg = pct5d(spyRow);
+        if (rowChg === null || spyChg === null) return "";
+        var diff = rowChg - spyChg;
+        var bg = diff >= 0 ? "#EAF3DE" : "#FCEBEB";
+        var text = diff >= 0 ? "#27500A" : "#501313";
+        var label = "vs SPY (5d) " + (diff >= 0 ? "+" : "") + diff.toFixed(1) + "%";
+        return '<span class="indicator-badge" style="background:' + bg + ';color:' + text + ';">' + label + '</span>';
+      }
+
       function buildCard(row) {
         if (row.error) {
           return '<div class="card"><div class="card-head"><span class="ticker">' + row.symbol +
@@ -666,13 +761,15 @@
         head += '</div>';
 
         var signal = computeSignal(row);
-        var signalRow = signal ? '<div>' + signalBadgeHtml(signal) + volConfirmBadgeHtml(signal, row.relVol) + sizingRowHtml(row, signal) + exitRowHtml(row, signal) + '</div>' : '';
+        var streak = signal ? trackSignalStreak(row.symbol, signal.label) : null;
+        var signalRow = signal ? '<div>' + signalBadgeHtml(signal, streak) + volConfirmBadgeHtml(signal, row.relVol) + sizingRowHtml(row, signal) + exitRowHtml(row, signal) + '</div>' : '';
 
         var badges = '<div class="badges-row">' +
           rsiBadgeHtml(row.rsi) +
           stochBadgeHtml(row.stochastic) +
           trendBadgeHtml(row.trend) +
-          volBadgeHtml(row.relVol) +
+          volBadgeHtml(row) +
+          relStrengthBadgeHtml(row) +
           macdBadgeHtml(row.macd) +
           adxBadgeHtml(row.adx) +
           supertrendBadgeHtml(row.supertrend) +
@@ -751,7 +848,10 @@
         document.getElementById("rows-rest").innerHTML = '';
         document.getElementById("updatedLabel").textContent = "Loading…";
 
-        var url = WORKER_URL + "?symbols=" + encodeURIComponent(TICKERS.join(","));
+        // SPY is appended purely as the relative-strength benchmark (see
+        // relStrengthBadgeHtml) — filtered out below so it never renders as
+        // its own card.
+        var url = WORKER_URL + "?symbols=" + encodeURIComponent(TICKERS.concat(["SPY"]).join(","));
         fetch(url)
           .then(function (res) {
             if (!res.ok) throw new Error("Request failed: " + res.status);
@@ -759,8 +859,11 @@
           })
           .then(function (json) {
             if (json.error) throw new Error(json.error);
-            lastData = json.data || [];
+            var all = json.data || [];
+            spyRow = all.filter(function (r) { return r.symbol === "SPY"; })[0] || null;
+            lastData = all.filter(function (r) { return r.symbol !== "SPY"; });
             render(document.getElementById("sortSel").value);
+            saveSignalStreaks();
             document.getElementById("updatedLabel").textContent = "Updated " + new Date().toLocaleTimeString();
             setLoading(false);
           })
