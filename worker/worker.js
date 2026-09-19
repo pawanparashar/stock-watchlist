@@ -294,6 +294,18 @@ function computeBollinger(closes, period, mult) {
   return { upper: round(upper, 2), lower: round(lower, 2), breach: breach };
 }
 
+// Long-term trend filter for buy-the-dip index/ETF investors: many such
+// strategies only treat a pullback as a "discount" while price is still
+// above its 200-day trend, and treat a break below it as a regime change
+// rather than a buying opportunity. Not part of the scored signal — just
+// context, same as ATR/relVol.
+function computeSma200Context(closes, price) {
+  if (closes.length < 200) return null;
+  var slice = closes.slice(closes.length - 200);
+  var sma = slice.reduce(function (a, b) { return a + b; }, 0) / 200;
+  return { value: round(sma, 2), above: price >= sma, pct: round(((price - sma) / sma) * 100, 1) };
+}
+
 function computeWindows(highs, lows, price) {
   var out = {};
   var n = highs.length;
@@ -349,6 +361,8 @@ function computeRow(symbol, bars) {
 
   var stochastic = computeStochastic(highs, lows, closes, 14, 3, 3);
   row.stochastic = stochastic;
+
+  row.sma200 = computeSma200Context(closes, price);
 
   // Compact closing-price history for a frontend sparkline. Reuses bars already
   // fetched for the indicators above, no extra API calls.

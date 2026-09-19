@@ -94,6 +94,10 @@
       .sticker-detail { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
       .sizing-row { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
       .badges-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+      .etf-context { display: flex; gap: 18px; flex-wrap: wrap; margin: 0 0 10px; padding: 8px 12px; background: #F1EFE8; border-radius: 8px; }
+      .etf-stat { font-size: 12px; }
+      .etf-stat-label { color: var(--text-muted); margin-right: 4px; }
+      .etf-stat-value { font-weight: 600; }
       .indicator-badge { font-size: 11px; padding: 3px 9px; border-radius: 12px; white-space: nowrap; }
       .windows-grid {
         display: grid;
@@ -484,6 +488,37 @@
         return '<div class="sparkline-wrap">' + svg + '</div>';
       }
 
+      // Curated — the Worker has no reliable "is this an ETF" flag (Alpaca's
+      // asset metadata isn't fetched here), and these two stats specifically
+      // suit buy-the-dip index/sector fund investing rather than individual
+      // stocks, so they're shown only for known broad-market/sector ETFs
+      // instead of cluttering every card. Add more tickers here as needed.
+      var ETF_TICKERS = ["VOO", "VTI", "SPY", "SPYM", "SPLG", "IVV", "QQQ", "QQQM",
+        "VUG", "VTV", "SCHD", "SCHB", "SCHG", "SCHX", "IWM", "DIA",
+        "XLK", "XLF", "XLE", "XLV", "XLY", "XLP", "XLI", "XLU", "XLB", "XLRE",
+        "ARKK", "VXUS", "VEA", "VWO"];
+
+      function etfContextHtml(row) {
+        if (ETF_TICKERS.indexOf(row.symbol) === -1) return "";
+        var parts = [];
+
+        var w365 = row.windows && row.windows["365d"];
+        if (w365 && w365.high) {
+          var pctOffHigh = ((w365.high - row.price) / w365.high) * 100;
+          parts.push('<div class="etf-stat"><span class="etf-stat-label">52-week high</span><span class="etf-stat-value">' +
+            (pctOffHigh <= 0 ? "at/above high" : pctOffHigh.toFixed(1) + "% below") + '</span></div>');
+        }
+
+        if (row.sma200) {
+          var color = row.sma200.above ? "#27500A" : "#791F1F";
+          parts.push('<div class="etf-stat"><span class="etf-stat-label">200-day trend</span><span class="etf-stat-value" style="color:' + color + ';">' +
+            (row.sma200.above ? "Above" : "Below") + ' &middot; ' + (row.sma200.pct > 0 ? "+" : "") + row.sma200.pct.toFixed(1) + '% &middot; ' + fmt(row.sma200.value) + '</span></div>');
+        }
+
+        if (!parts.length) return "";
+        return '<div class="etf-context">' + parts.join("") + '</div>';
+      }
+
       function stickerRowHtml(symbol, stickerData) {
         if (!stickerData || !stickerData.data) return "";
         var s = stickerData.data[symbol];
@@ -572,10 +607,11 @@
         grid += '</div>';
 
         var spark = sparklineHtml(row, signal);
+        var etfContext = etfContextHtml(row);
         var stickerRow = stickerRowHtml(row.symbol, stickerData);
         var newsRow = newsRowHtml(row.news);
 
-        return '<div class="card" style="border-left-color:' + borderColor + ';">' + head + signalRow + badges + spark + stickerRow + grid + newsRow + '</div>';
+        return '<div class="card" style="border-left-color:' + borderColor + ';">' + head + signalRow + badges + etfContext + spark + stickerRow + grid + newsRow + '</div>';
       }
 
       function setLoading(isLoading) {
