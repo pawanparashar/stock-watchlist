@@ -191,15 +191,17 @@
       </div>
 
       <h1>Trend Watch</h1>
-      <div class="sub">Your 8 core tickers, plus the most decisive of the rest — full cards, each tagged with a verdict.</div>
+      <div class="sub">Your 8 core tickers, plus any other ticker with a clean Buy or Sell — full cards, each tagged with a verdict.</div>
       <div class="note">
         <strong>Verdict</strong> compares the top-line signal (Entry/Watch/Exit) against its own supporting
         context — volume direction, relative strength vs. SPY and sector, and Risk:Reward. <strong>Buy</strong>/<strong>Sell</strong>
         means everything points the same way. <strong>Signals Disagreeing</strong> means the headline signal
         and its supporting context contradict each other — worth reading closely, not skipping. TSLA, SPCX,
-        GOOGL, META, MSFT, NVDA, AMZN and AAPL always appear regardless of signal; the remaining slots (up to
-        12 total) go to whichever other tickers have the most extreme signal. Everything reflects last close;
-        not included: an earnings calendar (no data source for it yet). Nothing here is a buy/sell instruction.
+        GOOGL, META, MSFT, NVDA, AMZN and AAPL always appear regardless of verdict; every other ticker only
+        fills a remaining slot (up to 12 total) if it's a clean Buy or Sell — Signals Disagreeing or Neutral
+        names outside the core list don't take a slot just for having an extreme raw signal. GOOG is excluded
+        (GOOGL and GOOG are the same company's two share classes). Everything reflects last close; not
+        included: an earnings calendar (no data source for it yet). Nothing here is a buy/sell instruction.
       </div>
 
       <div class="controls">
@@ -262,7 +264,10 @@
       var WORKER_URL = "https://stock-watchlist-proxy.pawan227.workers.dev/";
       // Same watchlist as index.html — kept in sync manually since this is a
       // static site with no shared-component build step.
-      var TICKERS = ["AAPL","NVDA","GOOGL","AMZN","GOOG","AVGO","META","TSLA","MU","AMD","INTC","CAT","NFLX","SPCX","CRM","NOW","PANW","DOCU","MSFT","PLTR","NBIS","SOFI","BABA","IREN","WMT","FIG","COST","UBER"];
+      // Same list as index.html's TICKERS, minus GOOG — GOOGL and GOOG are
+      // the same company's two share classes and move together, so only
+      // GOOGL is kept here to avoid showing a near-duplicate card.
+      var TICKERS = ["AAPL","NVDA","GOOGL","AMZN","AVGO","META","TSLA","MU","AMD","INTC","CAT","NFLX","SPCX","CRM","NOW","PANW","DOCU","MSFT","PLTR","NBIS","SOFI","BABA","IREN","WMT","FIG","COST","UBER"];
       var CARD_LIMIT = 12;
       // Same core watchlist as index.html's TOP_TICKERS — always shown here
       // regardless of ranking, so a core holding sitting at a quiet Watch
@@ -909,8 +914,15 @@
             };
 
             var core = clean.filter(function (r) { return CORE_TICKERS.indexOf(r.symbol) !== -1; }).sort(byConviction);
-            var rest = clean.filter(function (r) { return CORE_TICKERS.indexOf(r.symbol) === -1; }).sort(byConviction);
-            var top = core.concat(rest.slice(0, Math.max(0, CARD_LIMIT - core.length)));
+            // Non-core slots are reserved for genuinely actionable names —
+            // a Signals Disagreeing or Neutral ticker outside the core list
+            // isn't worth a slot just for having an extreme raw signal.
+            var rest = clean.filter(function (r) { return CORE_TICKERS.indexOf(r.symbol) === -1; });
+            rest.forEach(function (r) { r._verdict = computeVerdict(r, r._signal); });
+            var restActionable = rest
+              .filter(function (r) { return r._verdict.label === "Buy" || r._verdict.label === "Sell"; })
+              .sort(byConviction);
+            var top = core.concat(restActionable.slice(0, Math.max(0, CARD_LIMIT - core.length)));
 
             if (!top.length) {
               document.getElementById("result").innerHTML = '<div class="empty-state">No data available.</div>';
