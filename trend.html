@@ -79,6 +79,9 @@
         text-transform: uppercase;
         padding: 6px 14px;
       }
+      .verdict-reasons { margin: 6px 0 0; padding-left: 18px; font-size: 11px; font-weight: 400; text-transform: none; letter-spacing: normal; line-height: 1.5; }
+      .verdict-reasons li { margin-bottom: 2px; }
+      .verdict-reasons li:last-child { margin-bottom: 0; }
       .card-body { padding: 12px 14px; }
       .card-head {
         display: flex;
@@ -446,25 +449,33 @@
       // "Signals Disagreeing" rather than averaging it out, since the point
       // is to flag the conflict for a closer look, not to smooth over it.
       function computeVerdict(row, signal) {
-        if (!signal) return { label: "Neutral", bg: "#F1EFE8", text: "#6B6A63" };
+        if (!signal) return { label: "Neutral", bg: "#F1EFE8", text: "#6B6A63", reasons: [] };
         var isBullish = signal.label === "Entry" || signal.label === "Entry+";
         var isBearish = signal.label === "Exit" || signal.label === "Exit+";
-        if (!isBullish && !isBearish) return { label: "Neutral", bg: "#F1EFE8", text: "#6B6A63" };
+        if (!isBullish && !isBearish) return { label: "Neutral", bg: "#F1EFE8", text: "#6B6A63", reasons: [] };
 
-        var disagree = 0;
+        var reasons = [];
 
         var chg = dayChangePct(row);
         if (chg !== null && row.relVol !== null && row.relVol !== undefined && row.relVol >= 1.5) {
-          if (isBullish && chg < -0.1) disagree++;
-          if (isBearish && chg > 0.1) disagree++;
+          if (isBullish && chg < -0.1) {
+            reasons.push("Volume is Distribution (" + row.relVol.toFixed(1) + "x, sellers active) even though the signal is bullish (" + signal.label + ") — heavy selling on a supposed buy signal undercuts the case.");
+          }
+          if (isBearish && chg > 0.1) {
+            reasons.push("Volume is Accumulation (" + row.relVol.toFixed(1) + "x, buyers active) even though the signal is bearish (" + signal.label + ") — heavy buying on a supposed sell signal is a contradiction worth a closer look.");
+          }
         }
 
         if (spyRow) {
           var rowChg = pct5d(row), spyChg = pct5d(spyRow);
           if (rowChg !== null && spyChg !== null) {
             var diff = rowChg - spyChg;
-            if (isBullish && diff < 0) disagree++;
-            if (isBearish && diff > 0) disagree++;
+            if (isBullish && diff < 0) {
+              reasons.push("Underperforming the market (" + diff.toFixed(1) + "% vs SPY over 5 days) despite a bullish signal — the case isn't showing up as relative strength yet.");
+            }
+            if (isBearish && diff > 0) {
+              reasons.push("Still outperforming the market (+" + diff.toFixed(1) + "% vs SPY over 5 days) despite a bearish signal — real weakness usually shows up here first.");
+            }
           }
         }
 
@@ -474,14 +485,16 @@
             var risk = s.buyPrice - s.stopPrice;
             var target = computeTarget(row, s.buyPrice);
             var reward = target - s.buyPrice;
-            if (risk > 0 && reward > 0 && reward / risk < 1) disagree++;
+            if (risk > 0 && reward > 0 && reward / risk < 1) {
+              reasons.push("Risk:Reward is only 1:" + (reward / risk).toFixed(1) + " — you'd be risking more to the stop than you stand to gain to the nearest resistance, a weak setup even though the signal says " + signal.label + ".");
+            }
           }
         }
 
-        if (disagree > 0) return { label: "Signals Disagreeing", bg: "#FAEEDA", text: "#633806" };
+        if (reasons.length > 0) return { label: "Signals Disagreeing", bg: "#FAEEDA", text: "#633806", reasons: reasons };
         return isBullish
-          ? { label: "Buy", bg: "#B7DDAC", text: "#1B4D0F" }
-          : { label: "Sell", bg: "#E9A6A6", text: "#4A0A0A" };
+          ? { label: "Buy", bg: "#B7DDAC", text: "#1B4D0F", reasons: [] }
+          : { label: "Sell", bg: "#E9A6A6", text: "#4A0A0A", reasons: [] };
       }
 
       function signalBadgeHtml(signal, streak) {
@@ -725,9 +738,12 @@
 
         var spark = sparklineHtml(row, signal);
         var newsRow = newsRowHtml(row.news);
+        var verdictReasonsHtml = verdict.reasons && verdict.reasons.length
+          ? '<ul class="verdict-reasons">' + verdict.reasons.map(function (r) { return '<li>' + r + '</li>'; }).join("") + '</ul>'
+          : '';
 
         return '<div class="card">' +
-          '<div class="verdict-strip" style="background:' + verdict.bg + ';color:' + verdict.text + ';">' + verdict.label + '</div>' +
+          '<div class="verdict-strip" style="background:' + verdict.bg + ';color:' + verdict.text + ';">' + verdict.label + verdictReasonsHtml + '</div>' +
           '<div class="card-body">' + head + signalRow + badges + spark + grid + newsRow + '</div>' +
         '</div>';
       }
