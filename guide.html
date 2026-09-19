@@ -238,6 +238,14 @@
         traders prefer buying relative strength — a dip in a name that's still beating the market is a
         different setup than a dip in a name that's simply following the market down.
       </p>
+      <p>
+        <strong>Trend Watch only</strong> also shows a <code>vs [Sector ETF] (5d)</code> badge — the same
+        comparison, but against a sector peer group (e.g. SMH for semiconductors, XLC for Communication
+        Services) instead of the whole market. It exists to split a market-wide dip into two more precise
+        cases: is the whole sector down with it (sector-wide), or is this ticker down even relative to its
+        own sector (stock-specific)? See the Trend Watch verdicts section below for how this shows up in the
+        Signals Disagreeing explanation.
+      </p>
 
       <h2>The small indicator badges</h2>
       <p>Quick reference table, then a full breakdown of each one below with its value range and what counts as good, bad, or nothing-to-see-here.</p>
@@ -442,6 +450,18 @@
         Signals Disagreeing, rather than averaging the factors together. The point is to flag a conflict for
         you to look at, not to quietly smooth it into a single number.
       </div>
+      <p>
+        Every Signals Disagreeing card also lists the specific reason(s) in plain English inside the verdict
+        strip. When the disagreement involves relative strength (vs. SPY), and the ticker has a sector
+        mapping, the reason goes one step further and checks its sector ETF too:
+      </p>
+      <table>
+        <tr><th>Pattern</th><th>What the reason says</th></tr>
+        <tr><td>Ticker lagging SPY, sector also lagging SPY</td><td>"This looks sector-wide, not specific to [ticker]." — the whole group is down with it, a broader concern than a company-specific one.</td></tr>
+        <tr><td>Ticker lagging SPY, sector roughly in line with SPY</td><td>"[Ticker] is underperforming even its own sector — points to stock-specific weakness." — worth reading the news for a company-specific reason.</td></tr>
+        <tr><td>Ticker lagging SPY, sector in line with the ticker</td><td>"[Ticker] is roughly in line with [sector], so this looks like ordinary noise" — no strong signal either way.</td></tr>
+      </table>
+      <div class="note">Not every ticker has a sector mapping — it's a best-effort list maintained by hand for this watchlist. Tickers without one just get the plain SPY-only reason, no sector breakdown.</div>
       <div class="warn">
         Tickers stuck at Watch with nothing decisive underneath don't make the top-12 list at all — Trend
         Watch ranks by how extreme the signal is (Entry+/Exit+ first, then Entry/Exit, Watch last), so a slow
