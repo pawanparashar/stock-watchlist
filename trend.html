@@ -191,13 +191,14 @@
       </div>
 
       <h1>Trend Watch</h1>
-      <div class="sub">The 12 most decisive tickers in your watchlist right now — full cards, each tagged with a verdict.</div>
+      <div class="sub">Your 8 core tickers, plus the most decisive of the rest — full cards, each tagged with a verdict.</div>
       <div class="note">
         <strong>Verdict</strong> compares the top-line signal (Entry/Watch/Exit) against its own supporting
-        context — volume direction, relative strength vs. SPY, and Risk:Reward. <strong>Buy</strong>/<strong>Sell</strong>
+        context — volume direction, relative strength vs. SPY and sector, and Risk:Reward. <strong>Buy</strong>/<strong>Sell</strong>
         means everything points the same way. <strong>Signals Disagreeing</strong> means the headline signal
-        and its supporting context contradict each other — worth reading closely, not skipping. Tickers stuck
-        at Watch with nothing decisive underneath don't make this list at all. Everything reflects last close;
+        and its supporting context contradict each other — worth reading closely, not skipping. TSLA, SPCX,
+        GOOGL, META, MSFT, NVDA, AMZN and AAPL always appear regardless of signal; the remaining slots (up to
+        12 total) go to whichever other tickers have the most extreme signal. Everything reflects last close;
         not included: an earnings calendar (no data source for it yet). Nothing here is a buy/sell instruction.
       </div>
 
@@ -263,6 +264,11 @@
       // static site with no shared-component build step.
       var TICKERS = ["AAPL","NVDA","GOOGL","AMZN","GOOG","AVGO","META","TSLA","MU","AMD","INTC","CAT","NFLX","SPCX","CRM","NOW","PANW","DOCU","MSFT","PLTR","NBIS","SOFI","BABA","IREN","WMT","FIG","COST","UBER"];
       var CARD_LIMIT = 12;
+      // Same core watchlist as index.html's TOP_TICKERS — always shown here
+      // regardless of ranking, so a core holding sitting at a quiet Watch
+      // signal doesn't silently drop off the list. Remaining CARD_LIMIT
+      // slots go to the most decisive tickers from the rest.
+      var CORE_TICKERS = ["TSLA","SPCX","GOOGL","META","MSFT","NVDA","AMZN","AAPL"];
 
       var COLS = ["7d","15d","30d","90d","180d","365d"];
       var LOW_BREAK_VOTE = { "7d": 1, "15d": 1, "30d": 2, "90d": 2, "180d": 3, "365d": 3 };
@@ -491,11 +497,52 @@
       // leading SPY, a poor Risk:Reward — downgrades a clean Buy/Sell into
       // "Signals Disagreeing" rather than averaging it out, since the point
       // is to flag the conflict for a closer look, not to smooth over it.
+      // Explains a Watch/Neutral verdict the same way disagreements are
+      // explained: not just the label, but why — which momentum indicators
+      // are sitting neutral, and whether the trend indicators lean one way
+      // but aren't strong/agreed-upon enough to tip into Entry or Exit.
+      function neutralSummaryLines(row) {
+        var lines = [];
+
+        var momentumBits = [];
+        if (row.rsi !== null && row.rsi !== undefined) momentumBits.push("RSI " + row.rsi);
+        if (row.stochastic) momentumBits.push("Stochastic " + row.stochastic.k);
+        if (momentumBits.length) {
+          var extreme = (row.rsi !== null && row.rsi !== undefined && (row.rsi <= 30 || row.rsi >= 70)) ||
+            (row.stochastic && (row.stochastic.oversold || row.stochastic.overbought));
+          lines.push(momentumBits.join(" and ") + (extreme
+            ? " show some pull, but not enough on their own to outweigh everything else."
+            : " are both in neutral territory — no oversold or overbought extreme to react to right now."));
+        }
+
+        var votes = [];
+        if (row.trend) votes.push(row.trend === "up" ? 1 : -1);
+        if (row.macd) votes.push(row.macd.bullish ? 1 : -1);
+        if (row.supertrend) votes.push(row.supertrend.direction === "up" ? 1 : -1);
+        if (votes.length) {
+          var upCount = votes.filter(function (v) { return v > 0; }).length;
+          var downCount = votes.length - upCount;
+          var lean = upCount === downCount
+            ? "Trend indicators are evenly split (" + upCount + " up vs " + downCount + " down)"
+            : (upCount > downCount
+              ? "Trend indicators lean up (" + upCount + "/" + votes.length + ")"
+              : "Trend indicators lean down (" + downCount + "/" + votes.length + ")");
+          var adxNote = "";
+          if (row.adx) {
+            if (row.adx.value < 20) adxNote = ", but a weak trend (ADX " + row.adx.value + ") means that lean is discounted";
+            else if (row.adx.strong) adxNote = ", backed by a strong trend (ADX " + row.adx.value + ")";
+          }
+          lines.push(lean + adxNote + " — not enough to cross into Entry or Exit territory.");
+        }
+
+        return lines.slice(0, 2);
+      }
+
       function computeVerdict(row, signal) {
         if (!signal) return { label: "Neutral", bg: "#F1EFE8", text: "#6B6A63", reasons: [] };
         var isBullish = signal.label === "Entry" || signal.label === "Entry+";
         var isBearish = signal.label === "Exit" || signal.label === "Exit+";
-        if (!isBullish && !isBearish) return { label: "Neutral", bg: "#F1EFE8", text: "#6B6A63", reasons: [] };
+        if (!isBullish && !isBearish) return { label: "Neutral", bg: "#F1EFE8", text: "#6B6A63", reasons: neutralSummaryLines(row) };
 
         var reasons = [];
 
@@ -855,12 +902,15 @@
             var clean = all.filter(function (r) { return benchmarks.indexOf(r.symbol) === -1 && !r.error; });
 
             clean.forEach(function (r) { r._signal = computeSignal(r); });
-            clean.sort(function (a, b) {
+            var byConviction = function (a, b) {
               var rankA = a._signal ? Math.abs(a._signal.rank - 3) : 0;
               var rankB = b._signal ? Math.abs(b._signal.rank - 3) : 0;
               return rankB - rankA;
-            });
-            var top = clean.slice(0, CARD_LIMIT);
+            };
+
+            var core = clean.filter(function (r) { return CORE_TICKERS.indexOf(r.symbol) !== -1; }).sort(byConviction);
+            var rest = clean.filter(function (r) { return CORE_TICKERS.indexOf(r.symbol) === -1; }).sort(byConviction);
+            var top = core.concat(rest.slice(0, Math.max(0, CARD_LIMIT - core.length)));
 
             if (!top.length) {
               document.getElementById("result").innerHTML = '<div class="empty-state">No data available.</div>';

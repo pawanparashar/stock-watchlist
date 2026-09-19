@@ -462,11 +462,22 @@
         <tr><td>Ticker lagging SPY, sector in line with the ticker</td><td>"[Ticker] is roughly in line with [sector], so this looks like ordinary noise" — no strong signal either way.</td></tr>
       </table>
       <div class="note">Not every ticker has a sector mapping — it's a best-effort list maintained by hand for this watchlist. Tickers without one just get the plain SPY-only reason, no sector breakdown.</div>
-      <div class="warn">
-        Tickers stuck at Watch with nothing decisive underneath don't make the top-12 list at all — Trend
-        Watch ranks by how extreme the signal is (Entry+/Exit+ first, then Entry/Exit, Watch last), so a slow
-        week can still surface mostly Watch-adjacent names if nothing stronger is happening in your watchlist.
+      <div class="note">
+        8 tickers always appear regardless of ranking — the same core watchlist as the main page's top
+        section: TSLA, SPCX, GOOGL, META, MSFT, NVDA, AMZN, AAPL. The remaining slots (up to 12 total) go to
+        whichever other tickers have the most extreme signal (Entry+/Exit+ first, then Entry/Exit) — so a
+        slow week can still fill those last few slots with Watch-adjacent names if nothing stronger is
+        happening elsewhere in your watchlist.
       </div>
+
+      <h3><span class="badge-demo" style="background:#F1EFE8;color:#6B6A63;">Neutral</span> summary</h3>
+      <p>
+        Neutral cards get the same explanation treatment as Signals Disagreeing — 1-2 plain-English lines
+        inside the verdict strip, built from the indicators themselves: whether RSI/Stochastic are sitting in
+        neutral territory or showing some pull, and which way the trend indicators (Trend, MACD, Supertrend)
+        lean and whether ADX makes that lean worth trusting. It's context for <em>why</em> nothing decisive is
+        happening, not a hidden signal.
+      </p>
 
       <div class="footer">
         <a href="trend.html">Trend watch</a>
