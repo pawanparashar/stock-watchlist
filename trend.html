@@ -34,7 +34,7 @@
         padding: 10px 14px;
         margin: 10px 0 20px;
       }
-      .controls { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+      .controls { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
       .updated { font-size: 12px; color: var(--text-muted); }
       button#refreshBtn {
         font-size: 13px;
@@ -47,7 +47,12 @@
         cursor: pointer;
       }
       button#refreshBtn:disabled { opacity: 0.6; cursor: default; }
-      #result { display: flex; flex-direction: column; gap: 6px; }
+      .section-title { font-size: 15px; font-weight: 700; margin: 30px 0 2px; }
+      .section-sub { font-size: 12px; color: var(--text-muted); margin-bottom: 10px; }
+      .list { display: flex; flex-direction: column; gap: 6px; }
+      .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+      @media (max-width: 600px) { .two-col { grid-template-columns: 1fr; } }
+      .col-title { font-size: 11px; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.4px; }
       .trend-row {
         display: flex;
         align-items: center;
@@ -69,11 +74,17 @@
       .trend-ticker { font-size: 15px; font-weight: 600; }
       .trend-price { font-size: 13px; font-weight: 400; color: var(--text-secondary); margin-left: 6px; }
       .trend-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-      .signal-badge { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 10px; }
+      .signal-badge { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 10px; white-space: nowrap; }
       .trend-stats { text-align: right; flex-shrink: 0; }
       .trend-vol { font-size: 13px; font-weight: 700; color: #042C53; }
       .trend-change { font-size: 12px; margin-top: 2px; }
-      .empty-state { text-align: center; color: var(--text-muted); font-size: 13px; padding: 40px 0; }
+      .trend-news-row { display: flex; gap: 10px; border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 14px; background: #fff; }
+      .trend-news-ticker { font-size: 13px; font-weight: 700; flex-shrink: 0; width: 48px; }
+      .trend-news-body { font-size: 12px; color: var(--text-secondary); }
+      .trend-news-body a { color: var(--text-secondary); text-decoration: none; }
+      .trend-news-body a:hover { text-decoration: underline; }
+      .trend-news-meta { color: var(--text-muted); }
+      .empty-state { text-align: center; color: var(--text-muted); font-size: 13px; padding: 24px 0; }
       .footer { text-align: center; color: var(--text-muted); font-size: 12px; margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--border); }
       .footer a { color: var(--text-secondary); text-decoration: none; }
       .footer a:hover { text-decoration: underline; }
@@ -150,12 +161,11 @@
       </div>
 
       <h1>Trend Watch</h1>
-      <div class="sub">Top 10 from your watchlist by relative volume — the tickers seeing unusually heavy trading right now.</div>
+      <div class="sub">A weekend scan of your watchlist — what's worth a closer look before Monday/Tuesday.</div>
       <div class="note">
-        Ranked by today's volume vs. each ticker's own 20-day average, not raw share count — so a normally
-        quiet stock trading 3&times; its own average shows up here even if a mega-cap traded more total shares.
-        Heavy volume isn't inherently bullish or bearish by itself; read it alongside the signal and 5-day
-        change next to it, and go find out <em>why</em> before acting on it.
+        Everything below is computed from last close, so a weekend read reflects Friday's data. Not included:
+        an earnings calendar — that needs a data source this app doesn't currently have. Nothing here is a
+        buy/sell instruction; it's a shortlist of what to go research further.
       </div>
 
       <div class="controls">
@@ -163,9 +173,41 @@
         <span class="updated" id="updatedLabel"></span>
       </div>
 
-      <div id="result">
+      <div class="section-title">Unusual Volume</div>
+      <div class="section-sub">Today's volume vs. each ticker's own 20-day average — surfaces unusual activity rather than always the same mega caps.</div>
+      <div id="volResult" class="list">
         <div class="empty-state">Click Refresh to load this week's activity.</div>
       </div>
+
+      <div class="section-title">New Highs &amp; Lows</div>
+      <div class="section-sub">Tickers currently trading outside their recent range — the same break badges shown on the main watchlist, gathered here for a quick scan.</div>
+      <div class="two-col">
+        <div>
+          <div class="col-title">New highs</div>
+          <div id="highsResult" class="list"></div>
+        </div>
+        <div>
+          <div class="col-title">New lows</div>
+          <div id="lowsResult" class="list"></div>
+        </div>
+      </div>
+
+      <div class="section-title">RSI Extremes</div>
+      <div class="section-sub">Most stretched names by momentum — a bounce or pullback is more likely than usual, not guaranteed.</div>
+      <div class="two-col">
+        <div>
+          <div class="col-title">Most oversold</div>
+          <div id="oversoldResult" class="list"></div>
+        </div>
+        <div>
+          <div class="col-title">Most overbought</div>
+          <div id="overboughtResult" class="list"></div>
+        </div>
+      </div>
+
+      <div class="section-title">Recent News</div>
+      <div class="section-sub">Latest headline per ticker from the last 48 hours — a pointer to go read, not a ranked signal.</div>
+      <div id="newsResult" class="list"></div>
 
       <div class="footer">
         <a href="search.html">Sticker search</a>
@@ -179,6 +221,7 @@
       var TICKERS = ["AAPL","NVDA","GOOGL","AMZN","GOOG","AVGO","META","TSLA","MU","AMD","INTC","CAT","NFLX","SPCX","CRM","NOW","PANW","DOCU","MSFT","PLTR","NBIS","SOFI","BABA","IREN","WMT","FIG","COST","UBER"];
 
       var COLS = ["7d","15d","30d","90d","180d","365d"];
+      var DAY_ORDER = { "7d": 1, "15d": 2, "30d": 3, "90d": 4, "180d": 5, "365d": 6 };
       var LOW_BREAK_VOTE = { "7d": 1, "15d": 1, "30d": 2, "90d": 2, "180d": 3, "365d": 3 };
       var HIGH_BREAK_VOTE = { "7d": -1, "15d": -1, "30d": -2, "90d": -2, "180d": -3, "365d": -3 };
       var SIGNAL_TIERS = [
@@ -188,10 +231,38 @@
         { min: -4,          label: "Exit",    bg: "#FCEBEB", text: "#501313" },
         { min: -Infinity,   label: "Exit+",   bg: "#E9A6A6", text: "#4A0A0A" }
       ];
+      // Same break-badge colors as index.html/search.html — used here to
+      // color the New Highs/Lows section consistently with the main watchlist.
+      var STYLE = {
+        "7d":   { bg: "#FAEEDA", text: "#633806", label: "Below 7d low" },
+        "15d":  { bg: "#FAC775", text: "#633806", label: "Below 15d low" },
+        "30d":  { bg: "#EF9F27", text: "#412402", label: "Below 30d low" },
+        "90d":  { bg: "#BA7517", text: "#FAEEDA", label: "Below 90d low" },
+        "180d": { bg: "#F7C1C1", text: "#501313", label: "Below 180d low" },
+        "365d": { bg: "#E24B4A", text: "#FCEBEB", label: "Below 365d low" }
+      };
+      var HIGH_STYLE = {
+        "7d":   { bg: "#E6F1FB", text: "#0D3E68", label: "Above 7d high" },
+        "15d":  { bg: "#B9D9F5", text: "#0D3E68", label: "Above 15d high" },
+        "30d":  { bg: "#7FB8E6", text: "#0B2540", label: "Above 30d high" },
+        "90d":  { bg: "#4A93D1", text: "#FBFAF7", label: "Above 90d high" },
+        "180d": { bg: "#1E5C96", text: "#FBFAF7", label: "Above 180d high" },
+        "365d": { bg: "#0D3E68", text: "#FBFAF7", label: "Above 365d high" }
+      };
 
       function fmt(n) {
         if (n === null || n === undefined || isNaN(n)) return "—";
         return "$" + n.toFixed(2);
+      }
+
+      function escapeHtml(s) {
+        if (s === null || s === undefined) return "";
+        return String(s)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#39;");
       }
 
       function deepestOf(row) {
@@ -271,7 +342,7 @@
         return ((now - then) / then) * 100;
       }
 
-      function rankedRowHtml(row, rank) {
+      function volumeRowHtml(row, rank) {
         var signal = computeSignal(row);
         var change = pct5d(row);
         var changeColor = change === null ? "var(--text-muted)" : (change >= 0 ? "#27500A" : "#791F1F");
@@ -294,6 +365,41 @@
         '</div>';
       }
 
+      function breakoutRowHtml(row, key, styleMap) {
+        var s = styleMap[key];
+        return '<div class="trend-row">' +
+          '<div class="trend-main"><div class="trend-ticker">' + row.symbol + '<span class="trend-price">' + fmt(row.price) + '</span></div></div>' +
+          '<div class="trend-stats"><span class="signal-badge" style="background:' + s.bg + ';color:' + s.text + ';">' + s.label + '</span></div>' +
+        '</div>';
+      }
+
+      function rsiRowHtml(row, kind) {
+        var bg = kind === "oversold" ? "#EAF3DE" : "#FAEEDA";
+        var text = kind === "oversold" ? "#27500A" : "#633806";
+        return '<div class="trend-row">' +
+          '<div class="trend-main"><div class="trend-ticker">' + row.symbol + '<span class="trend-price">' + fmt(row.price) + '</span></div></div>' +
+          '<div class="trend-stats"><span class="signal-badge" style="background:' + bg + ';color:' + text + ';">RSI ' + row.rsi + '</span></div>' +
+        '</div>';
+      }
+
+      function newsItemHtml(row) {
+        var href = row.news.latestUrl ? escapeHtml(row.news.latestUrl) : "";
+        var headline = escapeHtml(row.news.latestHeadline);
+        var source = row.news.latestSource ? escapeHtml(row.news.latestSource) : "";
+        var link = href
+          ? '<a href="' + href + '" target="_blank" rel="noopener noreferrer">' + headline + '</a>'
+          : headline;
+        return '<div class="trend-news-row">' +
+          '<div class="trend-news-ticker">' + row.symbol + '</div>' +
+          '<div class="trend-news-body">' + link + (source ? ' <span class="trend-news-meta">(' + source + ')</span>' : '') + '</div>' +
+        '</div>';
+      }
+
+      function renderList(elId, items, emptyText) {
+        var el = document.getElementById(elId);
+        el.innerHTML = items.length ? items.join("") : '<div class="empty-state">' + emptyText + '</div>';
+      }
+
       function setLoading(isLoading) {
         var btn = document.getElementById("refreshBtn");
         btn.disabled = isLoading;
@@ -302,8 +408,10 @@
 
       function loadTrend() {
         setLoading(true);
-        document.getElementById("result").innerHTML = '<div class="empty-state">Loading…</div>';
         document.getElementById("updatedLabel").textContent = "";
+        ["volResult", "highsResult", "lowsResult", "oversoldResult", "overboughtResult", "newsResult"].forEach(function (id) {
+          document.getElementById(id).innerHTML = '<div class="empty-state">Loading…</div>';
+        });
 
         var url = WORKER_URL + "?symbols=" + encodeURIComponent(TICKERS.join(","));
         fetch(url)
@@ -313,24 +421,52 @@
           })
           .then(function (json) {
             if (json.error) throw new Error(json.error);
-            var rows = (json.data || []).filter(function (r) {
-              return !r.error && r.relVol !== null && r.relVol !== undefined;
-            });
-            rows.sort(function (a, b) { return b.relVol - a.relVol; });
-            var top = rows.slice(0, 10);
+            var rows = json.data || [];
+            var clean = rows.filter(function (r) { return !r.error; });
 
-            if (!top.length) {
-              document.getElementById("result").innerHTML = '<div class="empty-state">No volume data available.</div>';
-            } else {
-              document.getElementById("result").innerHTML = top.map(function (row, i) {
-                return rankedRowHtml(row, i + 1);
-              }).join("");
-            }
+            // Unusual Volume
+            var volRows = clean.filter(function (r) { return r.relVol !== null && r.relVol !== undefined; });
+            volRows.sort(function (a, b) { return b.relVol - a.relVol; });
+            renderList("volResult", volRows.slice(0, 8).map(function (r, i) { return volumeRowHtml(r, i + 1); }), "No volume data available.");
+
+            // New Highs / New Lows
+            var highs = [], lows = [];
+            clean.forEach(function (r) {
+              var dLow = deepestOf(r);
+              if (dLow) { lows.push({ row: r, key: dLow }); return; }
+              var dHigh = deepestHighOf(r);
+              if (dHigh) highs.push({ row: r, key: dHigh });
+            });
+            highs.sort(function (a, b) { return DAY_ORDER[b.key] - DAY_ORDER[a.key]; });
+            lows.sort(function (a, b) { return DAY_ORDER[b.key] - DAY_ORDER[a.key]; });
+            renderList("highsResult", highs.map(function (item) { return breakoutRowHtml(item.row, item.key, HIGH_STYLE); }), "No new highs right now.");
+            renderList("lowsResult", lows.map(function (item) { return breakoutRowHtml(item.row, item.key, STYLE); }), "No new lows right now.");
+
+            // RSI Extremes
+            var oversold = clean.filter(function (r) { return r.rsi !== null && r.rsi !== undefined && r.rsi <= 30; });
+            var overbought = clean.filter(function (r) { return r.rsi !== null && r.rsi !== undefined && r.rsi >= 70; });
+            oversold.sort(function (a, b) { return a.rsi - b.rsi; });
+            overbought.sort(function (a, b) { return b.rsi - a.rsi; });
+            renderList("oversoldResult", oversold.slice(0, 5).map(function (r) { return rsiRowHtml(r, "oversold"); }), "None oversold right now.");
+            renderList("overboughtResult", overbought.slice(0, 5).map(function (r) { return rsiRowHtml(r, "overbought"); }), "None overbought right now.");
+
+            // Recent News
+            var withNews = clean.filter(function (r) { return r.news && r.news.latestHeadline; });
+            withNews.sort(function (a, b) {
+              var ta = a.news.latestAt ? new Date(a.news.latestAt).getTime() : 0;
+              var tb = b.news.latestAt ? new Date(b.news.latestAt).getTime() : 0;
+              return tb - ta;
+            });
+            renderList("newsResult", withNews.slice(0, 10).map(newsItemHtml), "No recent headlines in the last 48 hours.");
+
             document.getElementById("updatedLabel").textContent = "Updated " + new Date().toLocaleTimeString();
             setLoading(false);
           })
           .catch(function (err) {
-            document.getElementById("result").innerHTML = '<div class="empty-state">Could not load data: ' + err.message + '</div>';
+            renderList("volResult", [], "Could not load data: " + err.message);
+            ["highsResult", "lowsResult", "oversoldResult", "overboughtResult", "newsResult"].forEach(function (id) {
+              document.getElementById(id).innerHTML = "";
+            });
             setLoading(false);
           });
       }
