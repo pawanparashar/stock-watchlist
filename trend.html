@@ -341,6 +341,26 @@
         return "$" + n.toFixed(2);
       }
 
+      // ATR as a raw dollar figure doesn't mean much on its own — $7 is huge
+      // for a $30 stock and nothing for a $700 one. Expressing it as % of
+      // price turns it into "this typically moves about X% in a day,"
+      // comparable across every ticker regardless of price.
+      function volatilityInfo(row) {
+        if (!row.atr || !row.price) return null;
+        var pct = (row.atr / row.price) * 100;
+        var tier, bg, text;
+        if (pct < 2) { tier = "Low"; bg = "#F1EFE8"; text = "#6B6A63"; }
+        else if (pct < 4) { tier = "Moderate"; bg = "#FAEEDA"; text = "#633806"; }
+        else { tier = "High"; bg = "#FCEBEB"; text = "#501313"; }
+        return { pct: pct, tier: tier, bg: bg, text: text };
+      }
+
+      function volatilityBadgeHtml(row) {
+        var v = volatilityInfo(row);
+        if (!v) return "";
+        return '<span class="indicator-badge" style="background:' + v.bg + ';color:' + v.text + ';">' + v.tier + ' volatility (' + v.pct.toFixed(1) + '%)</span>';
+      }
+
       function escapeHtml(s) {
         if (s === null || s === undefined) return "";
         return String(s)
@@ -816,7 +836,7 @@
         var head = '<div class="card-head">' +
           '<div class="ticker-price"><span class="ticker">' + row.symbol + '</span>' +
           '<span class="price">' + fmt(row.price) + '</span>' +
-          (row.atr !== null && row.atr !== undefined ? '<span class="atr-value">ATR ' + fmt(row.atr) + '</span>' : '') +
+          (row.atr !== null && row.atr !== undefined ? '<span class="atr-value">ATR ' + fmt(row.atr) + (volatilityInfo(row) ? ' (' + volatilityInfo(row).pct.toFixed(1) + '%)' : '') + '</span>' : '') +
           '</div>';
         if (s) {
           head += '<span class="badge" style="background:' + s.bg + ';color:' + s.text + ';">' + s.label + '</span>';
@@ -831,6 +851,7 @@
           rsiBadgeHtml(row.rsi) +
           stochBadgeHtml(row.stochastic) +
           trendBadgeHtml(row.trend) +
+          volatilityBadgeHtml(row) +
           volBadgeHtml(row) +
           relStrengthBadgeHtml(row) +
           sectorStrengthBadgeHtml(row) +

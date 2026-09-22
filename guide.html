@@ -363,6 +363,28 @@
       </table>
       <div class="note">Example: AMD showing "Above upper band" together with "Stoch 92 overbought" and "Above 30d high" is three different lenses agreeing the stock is statistically stretched to the upside right now.</div>
 
+      <h3>Volatility (ATR %)</h3>
+      <p>
+        A raw ATR dollar figure next to the price (e.g. "ATR $7.19") doesn't tell you much on its own — $7 is
+        a huge daily swing for a $30 stock and barely anything for a $700 one. The number in parentheses next
+        to it, and the colored badge below it, both express the same thing differently: ATR as a percentage
+        of the current price — roughly, "how much this typically moves in a day," comparable across every
+        ticker regardless of price.
+      </p>
+      <table>
+        <tr><th>ATR % of price</th><th>Reading</th><th>Badge shown</th></tr>
+        <tr><td>Under 2%</td><td><strong>Low volatility</strong> — a calmer, steadier mover day to day. Typical of large, stable names.</td><td>Grey, e.g. "Low volatility (1.4%)"</td></tr>
+        <tr><td>2%&ndash;4%</td><td><strong>Moderate volatility</strong> — a normal, unremarkable amount of daily movement.</td><td>Amber, e.g. "Moderate volatility (2.1%)"</td></tr>
+        <tr><td>4%+</td><td><strong>High volatility</strong> — big daily swings are normal for this ticker, not a sign something unusual is happening today specifically.</td><td>Red, e.g. "High volatility (4.6%)"</td></tr>
+      </table>
+      <div class="note">
+        Practical use: this is what the Buy ~$X / Stop ~$Y distance is actually built from (2&times; ATR — see
+        the Buy/Stop/Target section above), and it's a sanity check on position sizing — a "High volatility"
+        ticker needs a wider stop (more room to breathe) or a smaller position to keep the same dollar risk as
+        a "Low volatility" one.
+      </div>
+      <div class="warn">These thresholds are a rough rule of thumb based on typical ranges, not a statistical cutoff calculated from this watchlist's own data — treat them as a starting point for comparison, not a precise boundary.</div>
+
       <h2>ETF context (Sticker Search only)</h2>
       <p>
         On <a href="search.html">Sticker Search</a>, looking up a known broad-market or sector ETF (VOO, QQQM,
@@ -432,11 +454,12 @@
         <tr><td><code>Price high to low</code></td><td>By current share price</td></tr>
       </table>
 
-      <h2>Trend Watch verdicts</h2>
+      <h2>Verdicts (Trend Watch and Sticker Search)</h2>
       <p>
-        <a href="trend.html">Trend Watch</a> shows the 12 most decisive tickers in your watchlist as full
-        cards — same badges as above, plus one more thing: a colored verdict strip across the top of each
-        card. It's a second-pass check on the composite signal, not a new indicator.
+        Both <a href="trend.html">Trend Watch</a> and <a href="search.html">Sticker Search</a> show a colored
+        verdict strip across the top of every card, on top of all the badges described above. It's a
+        second-pass check on the composite signal, not a new indicator — the main watchlist doesn't show it
+        since it's meant as a quick full-scan of every ticker rather than a per-card verdict.
       </p>
       <table>
         <tr><th>Verdict</th><th>Meaning</th></tr>

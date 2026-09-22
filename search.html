@@ -56,14 +56,24 @@
       }
       button#searchBtn:disabled { opacity: 0.6; cursor: default; }
       .status { font-size: 12px; color: var(--text-muted); margin-bottom: 14px; }
-      #result { display: flex; flex-direction: column; gap: 8px; }
+      #result { display: flex; flex-direction: column; gap: 14px; }
       .card {
         border: 1px solid var(--border);
-        border-left: 4px solid var(--border);
         border-radius: var(--radius);
-        padding: 12px 14px;
         background: #fff;
+        overflow: hidden;
       }
+      .verdict-strip {
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.4px;
+        text-transform: uppercase;
+        padding: 6px 14px;
+      }
+      .verdict-reasons { margin: 6px 0 0; padding-left: 18px; font-size: 11px; font-weight: 400; text-transform: none; letter-spacing: normal; line-height: 1.5; }
+      .verdict-reasons li { margin-bottom: 2px; }
+      .verdict-reasons li:last-child { margin-bottom: 0; }
+      .card-body { padding: 12px 14px; }
       .card-head {
         display: flex;
         align-items: center;
@@ -251,6 +261,26 @@
         return "$" + n.toFixed(2);
       }
 
+      // ATR as a raw dollar figure doesn't mean much on its own — $7 is huge
+      // for a $30 stock and nothing for a $700 one. Expressing it as % of
+      // price turns it into "this typically moves about X% in a day,"
+      // comparable across every ticker regardless of price.
+      function volatilityInfo(row) {
+        if (!row.atr || !row.price) return null;
+        var pct = (row.atr / row.price) * 100;
+        var tier, bg, text;
+        if (pct < 2) { tier = "Low"; bg = "#F1EFE8"; text = "#6B6A63"; }
+        else if (pct < 4) { tier = "Moderate"; bg = "#FAEEDA"; text = "#633806"; }
+        else { tier = "High"; bg = "#FCEBEB"; text = "#501313"; }
+        return { pct: pct, tier: tier, bg: bg, text: text };
+      }
+
+      function volatilityBadgeHtml(row) {
+        var v = volatilityInfo(row);
+        if (!v) return "";
+        return '<span class="indicator-badge" style="background:' + v.bg + ';color:' + v.text + ';">' + v.tier + ' volatility (' + v.pct.toFixed(1) + '%)</span>';
+      }
+
       function escapeHtml(s) {
         if (s === null || s === undefined) return "";
         return String(s)
@@ -372,10 +402,51 @@
         return ((now - then) / then) * 100;
       }
 
-      // SPY row fetched alongside the searched symbol (see runSearch) but
-      // never rendered as its own card — kept here just as the market
-      // benchmark for the relative-strength badge below.
+      // SPY (and, when relevant, a sector ETF) fetched alongside the
+      // searched symbol (see runSearch) but never rendered as their own
+      // card unless explicitly searched — kept here as benchmarks for the
+      // relative-strength badges and the verdict logic below.
       var spyRow = null;
+      var sectorRowsByEtf = {};
+
+      // Best-effort ticker -> sector ETF map, same list as trend.html's —
+      // used to sharpen a relative-strength verdict reason into "sector-wide"
+      // vs. "stock-specific." SMH (semiconductors) is used instead of XLK
+      // for chip names since it's a tighter peer group.
+      var SECTOR_ETF = {
+        AAPL: { etf: "XLK", name: "Tech" }, MSFT: { etf: "XLK", name: "Tech" },
+        CRM: { etf: "XLK", name: "Tech" }, NOW: { etf: "XLK", name: "Tech" },
+        PANW: { etf: "XLK", name: "Tech" }, DOCU: { etf: "XLK", name: "Tech" },
+        PLTR: { etf: "XLK", name: "Tech" }, NBIS: { etf: "XLK", name: "Tech" },
+        FIG: { etf: "XLK", name: "Tech" }, IREN: { etf: "XLK", name: "Tech" },
+        NVDA: { etf: "SMH", name: "Semiconductors" }, AVGO: { etf: "SMH", name: "Semiconductors" },
+        MU: { etf: "SMH", name: "Semiconductors" }, AMD: { etf: "SMH", name: "Semiconductors" },
+        INTC: { etf: "SMH", name: "Semiconductors" },
+        GOOGL: { etf: "XLC", name: "Communication Services" }, GOOG: { etf: "XLC", name: "Communication Services" },
+        META: { etf: "XLC", name: "Communication Services" }, NFLX: { etf: "XLC", name: "Communication Services" },
+        SPCX: { etf: "XLC", name: "Communication Services" },
+        AMZN: { etf: "XLY", name: "Consumer Discretionary" }, TSLA: { etf: "XLY", name: "Consumer Discretionary" },
+        BABA: { etf: "XLY", name: "Consumer Discretionary" },
+        CAT: { etf: "XLI", name: "Industrials" }, UBER: { etf: "XLI", name: "Industrials" },
+        WMT: { etf: "XLP", name: "Consumer Staples" }, COST: { etf: "XLP", name: "Consumer Staples" },
+        SOFI: { etf: "XLF", name: "Financials" }
+      };
+
+      function sectorRowFor(row) {
+        var sector = SECTOR_ETF[row.symbol];
+        return sector ? sectorRowsByEtf[sector.etf] || null : null;
+      }
+
+      // Splits a market divergence into "sector-wide" vs. "stock-specific" —
+      // see trend.html for the full rationale.
+      function sectorClassification(row) {
+        var secRow = sectorRowFor(row);
+        var sector = SECTOR_ETF[row.symbol];
+        if (!secRow || !sector || !spyRow) return null;
+        var rowChg = pct5d(row), secChg = pct5d(secRow), spyChg = pct5d(spyRow);
+        if (rowChg === null || secChg === null || spyChg === null) return null;
+        return { sector: sector, sectorVsSpy: secChg - spyChg, rowVsSector: rowChg - secChg };
+      }
 
       function relStrengthBadgeHtml(row) {
         if (!spyRow || row.symbol === "SPY") return "";
@@ -385,6 +456,19 @@
         var bg = diff >= 0 ? "#EAF3DE" : "#FCEBEB";
         var text = diff >= 0 ? "#27500A" : "#501313";
         var label = "vs SPY (5d) " + (diff >= 0 ? "+" : "") + diff.toFixed(1) + "%";
+        return '<span class="indicator-badge" style="background:' + bg + ';color:' + text + ';">' + label + '</span>';
+      }
+
+      function sectorStrengthBadgeHtml(row) {
+        var sector = SECTOR_ETF[row.symbol];
+        var secRow = sectorRowFor(row);
+        if (!sector || !secRow) return "";
+        var rowChg = pct5d(row), secChg = pct5d(secRow);
+        if (rowChg === null || secChg === null) return "";
+        var diff = rowChg - secChg;
+        var bg = diff >= 0 ? "#EAF3DE" : "#FCEBEB";
+        var text = diff >= 0 ? "#27500A" : "#501313";
+        var label = "vs " + sector.etf + " (5d) " + (diff >= 0 ? "+" : "") + diff.toFixed(1) + "%";
         return '<span class="indicator-badge" style="background:' + bg + ';color:' + text + ';">' + label + '</span>';
       }
 
@@ -429,6 +513,114 @@
         var e = computeExitLevels(row);
         if (!e) return "";
         return '<div class="sizing-row">Sell ~' + fmt(e.sellPrice) + ' &middot; Trail stop ~' + fmt(e.trailPrice) + '</div>';
+      }
+
+      // Explains a Watch/Neutral verdict: which momentum indicators are
+      // sitting neutral, and whether trend indicators lean one way but
+      // aren't strong/agreed-upon enough to tip into Entry or Exit. Same
+      // logic as trend.html.
+      function neutralSummaryLines(row) {
+        var lines = [];
+
+        var momentumBits = [];
+        if (row.rsi !== null && row.rsi !== undefined) momentumBits.push("RSI " + row.rsi);
+        if (row.stochastic) momentumBits.push("Stochastic " + row.stochastic.k);
+        if (momentumBits.length) {
+          var extreme = (row.rsi !== null && row.rsi !== undefined && (row.rsi <= 30 || row.rsi >= 70)) ||
+            (row.stochastic && (row.stochastic.oversold || row.stochastic.overbought));
+          lines.push(momentumBits.join(" and ") + (extreme
+            ? " show some pull, but not enough on their own to outweigh everything else."
+            : " are both in neutral territory — no oversold or overbought extreme to react to right now."));
+        }
+
+        var votes = [];
+        if (row.trend) votes.push(row.trend === "up" ? 1 : -1);
+        if (row.macd) votes.push(row.macd.bullish ? 1 : -1);
+        if (row.supertrend) votes.push(row.supertrend.direction === "up" ? 1 : -1);
+        if (votes.length) {
+          var upCount = votes.filter(function (v) { return v > 0; }).length;
+          var downCount = votes.length - upCount;
+          var lean = upCount === downCount
+            ? "Trend indicators are evenly split (" + upCount + " up vs " + downCount + " down)"
+            : (upCount > downCount
+              ? "Trend indicators lean up (" + upCount + "/" + votes.length + ")"
+              : "Trend indicators lean down (" + downCount + "/" + votes.length + ")");
+          var adxNote = "";
+          if (row.adx) {
+            if (row.adx.value < 20) adxNote = ", but a weak trend (ADX " + row.adx.value + ") means that lean is discounted";
+            else if (row.adx.strong) adxNote = ", backed by a strong trend (ADX " + row.adx.value + ")";
+          }
+          lines.push(lean + adxNote + " — not enough to cross into Entry or Exit territory.");
+        }
+
+        return lines.slice(0, 2);
+      }
+
+      // Same verdict logic as trend.html: does everything underneath the
+      // headline signal agree with it? Entry/Entry+ is the bullish base
+      // case, Exit/Exit+ the bearish case, Watch stays Neutral. Any single
+      // contradicting factor downgrades a clean Buy/Sell into "Signals
+      // Disagreeing" rather than averaging it out.
+      function computeVerdict(row, signal) {
+        if (!signal) return { label: "Neutral", bg: "#F1EFE8", text: "#6B6A63", reasons: [] };
+        var isBullish = signal.label === "Entry" || signal.label === "Entry+";
+        var isBearish = signal.label === "Exit" || signal.label === "Exit+";
+        if (!isBullish && !isBearish) return { label: "Neutral", bg: "#F1EFE8", text: "#6B6A63", reasons: neutralSummaryLines(row) };
+
+        var reasons = [];
+
+        var chg = dayChangePct(row);
+        if (chg !== null && row.relVol !== null && row.relVol !== undefined && row.relVol >= 1.5) {
+          if (isBullish && chg < -0.1) {
+            reasons.push("Volume is Distribution (" + row.relVol.toFixed(1) + "x, sellers active) even though the signal is bullish (" + signal.label + ") — heavy selling on a supposed buy signal undercuts the case.");
+          }
+          if (isBearish && chg > 0.1) {
+            reasons.push("Volume is Accumulation (" + row.relVol.toFixed(1) + "x, buyers active) even though the signal is bearish (" + signal.label + ") — heavy buying on a supposed sell signal is a contradiction worth a closer look.");
+          }
+        }
+
+        if (spyRow) {
+          var rowChg = pct5d(row), spyChg = pct5d(spyRow);
+          if (rowChg !== null && spyChg !== null) {
+            var diff = rowChg - spyChg;
+            var cls = sectorClassification(row);
+            if (isBullish && diff < 0) {
+              var weakNote = "";
+              if (cls) {
+                if (cls.sectorVsSpy < -0.5) weakNote = " " + cls.sector.name + " (" + cls.sector.etf + ") is lagging the market too — this looks sector-wide, not specific to " + row.symbol + ".";
+                else if (cls.rowVsSector < -0.5) weakNote = " " + row.symbol + " is underperforming even its own sector (" + cls.sector.name + "/" + cls.sector.etf + ") — points to stock-specific weakness, worth reading the news for why.";
+                else weakNote = " " + row.symbol + " is roughly in line with " + cls.sector.name + " (" + cls.sector.etf + "), so this looks like ordinary noise more than a specific problem.";
+              }
+              reasons.push("Underperforming the market (" + diff.toFixed(1) + "% vs SPY over 5 days) despite a bullish signal — the case isn't showing up as relative strength yet." + weakNote);
+            }
+            if (isBearish && diff > 0) {
+              var strongNote = "";
+              if (cls) {
+                if (cls.sectorVsSpy > 0.5) strongNote = " " + cls.sector.name + " (" + cls.sector.etf + ") is leading the market too — this looks like sector-wide strength, not specific to " + row.symbol + ".";
+                else if (cls.rowVsSector > 0.5) strongNote = " " + row.symbol + " is outperforming even its own sector (" + cls.sector.name + "/" + cls.sector.etf + ") — stock-specific strength worth understanding before assuming the " + signal.label + " case is clean.";
+                else strongNote = " " + row.symbol + " is roughly in line with " + cls.sector.name + " (" + cls.sector.etf + "), so this looks like ordinary noise more than a specific problem.";
+              }
+              reasons.push("Still outperforming the market (+" + diff.toFixed(1) + "% vs SPY over 5 days) despite a bearish signal — real weakness usually shows up here first." + strongNote);
+            }
+          }
+        }
+
+        if (isBullish) {
+          var s = computeSizing(row);
+          if (s) {
+            var risk = s.buyPrice - s.stopPrice;
+            var target = computeTarget(row, s.buyPrice);
+            var reward = target - s.buyPrice;
+            if (risk > 0 && reward > 0 && reward / risk < 1) {
+              reasons.push("Risk:Reward is only 1:" + (reward / risk).toFixed(1) + " — you'd be risking more to the stop than you stand to gain to the nearest resistance, a weak setup even though the signal says " + signal.label + ".");
+            }
+          }
+        }
+
+        if (reasons.length > 0) return { label: "Signals Disagreeing", bg: "#FAEEDA", text: "#633806", reasons: reasons };
+        return isBullish
+          ? { label: "Buy", bg: "#B7DDAC", text: "#1B4D0F", reasons: [] }
+          : { label: "Sell", bg: "#E9A6A6", text: "#4A0A0A", reasons: [] };
       }
 
       function volConfirmBadgeHtml(signal, relVol) {
@@ -655,12 +847,11 @@
         var deepest = deepestOf(row);
         var deepestHigh = deepest ? null : deepestHighOf(row);
         var s = deepest ? STYLE[deepest] : (deepestHigh ? HIGH_STYLE[deepestHigh] : null);
-        var borderColor = s ? s.border : "var(--border)";
 
         var head = '<div class="card-head">' +
           '<div class="ticker-price"><span class="ticker">' + row.symbol + '</span>' +
           '<span class="price">' + fmt(row.price) + '</span>' +
-          (row.atr !== null && row.atr !== undefined ? '<span class="atr-value">ATR ' + fmt(row.atr) + '</span>' : '') +
+          (row.atr !== null && row.atr !== undefined ? '<span class="atr-value">ATR ' + fmt(row.atr) + (volatilityInfo(row) ? ' (' + volatilityInfo(row).pct.toFixed(1) + '%)' : '') + '</span>' : '') +
           '</div>';
         if (s) {
           head += '<span class="badge" style="background:' + s.bg + ';color:' + s.text + ';">' + s.label + '</span>';
@@ -677,8 +868,10 @@
           rsiBadgeHtml(row.rsi) +
           stochBadgeHtml(row.stochastic) +
           trendBadgeHtml(row.trend) +
+          volatilityBadgeHtml(row) +
           volBadgeHtml(row) +
           relStrengthBadgeHtml(row) +
+          sectorStrengthBadgeHtml(row) +
           macdBadgeHtml(row.macd) +
           adxBadgeHtml(row.adx) +
           supertrendBadgeHtml(row.supertrend) +
@@ -709,7 +902,15 @@
         var stickerRow = stickerRowHtml(row.symbol, stickerData);
         var newsRow = newsRowHtml(row.news);
 
-        return '<div class="card" style="border-left-color:' + borderColor + ';">' + head + signalRow + badges + etfContext + spark + stickerRow + grid + newsRow + '</div>';
+        var verdict = computeVerdict(row, signal);
+        var verdictReasonsHtml = verdict.reasons && verdict.reasons.length
+          ? '<ul class="verdict-reasons">' + verdict.reasons.map(function (r) { return '<li>' + r + '</li>'; }).join("") + '</ul>'
+          : '';
+
+        return '<div class="card">' +
+          '<div class="verdict-strip" style="background:' + verdict.bg + ';color:' + verdict.text + ';">' + verdict.label + verdictReasonsHtml + '</div>' +
+          '<div class="card-body">' + head + signalRow + badges + etfContext + spark + stickerRow + grid + newsRow + '</div>' +
+        '</div>';
       }
 
       function setLoading(isLoading) {
@@ -726,11 +927,18 @@
         document.getElementById("result").innerHTML = '<div class="empty-state">Loading…</div>';
         document.getElementById("statusLabel").textContent = "Fetching price data…";
 
-        // SPY is appended as the relative-strength benchmark (see
-        // relStrengthBadgeHtml) unless the user already searched it directly.
+        // SPY and any needed sector ETF are appended as benchmarks (see
+        // relStrengthBadgeHtml/sectorStrengthBadgeHtml) unless the user
+        // already searched them directly.
         var rawSymbols = raw.split(",").map(function (s) { return s.trim(); }).filter(Boolean);
         var needsSpy = rawSymbols.indexOf("SPY") === -1;
-        var fetchSymbols = needsSpy ? rawSymbols.concat(["SPY"]) : rawSymbols;
+        var neededSectorEtfs = [];
+        rawSymbols.forEach(function (sym) {
+          var sec = SECTOR_ETF[sym];
+          if (sec && rawSymbols.indexOf(sec.etf) === -1 && neededSectorEtfs.indexOf(sec.etf) === -1) neededSectorEtfs.push(sec.etf);
+        });
+        var benchmarks = (needsSpy ? ["SPY"] : []).concat(neededSectorEtfs);
+        var fetchSymbols = rawSymbols.concat(benchmarks);
 
         var priceUrl = WORKER_URL + "?symbols=" + encodeURIComponent(fetchSymbols.join(","));
         var stickerUrl = WORKER_URL + "?symbols=" + encodeURIComponent(raw) + "&mode=sticker";
@@ -751,7 +959,11 @@
 
           var allRows = priceJson.data || [];
           spyRow = allRows.filter(function (r) { return r.symbol === "SPY"; })[0] || null;
-          var rows = needsSpy ? allRows.filter(function (r) { return r.symbol !== "SPY"; }) : allRows;
+          sectorRowsByEtf = {};
+          neededSectorEtfs.forEach(function (etf) {
+            sectorRowsByEtf[etf] = allRows.filter(function (r) { return r.symbol === etf; })[0] || null;
+          });
+          var rows = allRows.filter(function (r) { return rawSymbols.indexOf(r.symbol) !== -1; });
           if (!rows.length) throw new Error("No data returned for \"" + raw + "\"");
 
           var bySymbol = {};
