@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>News Executive Summary — Parashar Radar</title>
+    <link rel="icon" type="image/png" href="assets/favicon.png" />
+    <style>
+      :root {
+        --border: #E4E1D8;
+        --text-primary: #2B2A27;
+        --text-secondary: #6B6A63;
+        --text-muted: #9B9A93;
+        --radius: 8px;
+      }
+      * { box-sizing: border-box; }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+        background: #FBFAF7;
+        color: var(--text-primary);
+        margin: 0;
+        padding: 24px 16px 60px;
+      }
+      .wrap { max-width: 760px; margin: 0 auto; }
+      .header {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        margin-bottom: 18px;
+        gap: 12px;
+      }
+      /* Same banner markup/style as index.html, swapped to link back to the
+         watchlist (left half) and the reading guide (right half), so every
+         page in the site shares one nav idiom. */
+      .banner {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        width: 100%;
+        background: linear-gradient(135deg, #1a1a1a, #0b0b0b);
+        border: 1px solid #2a2a2a;
+        border-radius: var(--radius);
+        padding: 18px 26px;
+        overflow: hidden;
+      }
+      .banner-half {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 50%;
+        z-index: 2;
+        transition: background 0.15s ease;
+      }
+      .banner-half:hover { background: rgba(255, 255, 255, 0.05); }
+      .banner-left { left: 0; border-radius: var(--radius) 0 0 var(--radius); }
+      .banner-right { right: 0; border-radius: 0 var(--radius) var(--radius) 0; }
+      .banner-icon { position: relative; z-index: 1; width: 56px; height: 56px; flex-shrink: 0; }
+      .banner-text { position: relative; z-index: 1; }
+      .banner-title {
+        font-size: 25px;
+        font-weight: 800;
+        letter-spacing: 0.5px;
+        background: linear-gradient(180deg, #FFE9A8, #D4A017 60%, #9C6B0A);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+      .banner-sub {
+        font-size: 11px;
+        letter-spacing: 1.5px;
+        color: #C9A227;
+        margin-top: 2px;
+      }
+      .controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+      .updated { font-size: 12px; color: var(--text-muted); }
+      button {
+        font-size: 13px;
+        font-family: inherit;
+        padding: 6px 10px;
+        border-radius: 6px;
+        border: 1px solid var(--border);
+        background: #fff;
+        color: var(--text-primary);
+        cursor: pointer;
+      }
+      button#refreshBtn {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: #2B2A27;
+        color: #fff;
+        border: none;
+      }
+      button#refreshBtn:disabled { opacity: 0.6; cursor: default; }
+
+      .empty-state { text-align: center; color: var(--text-muted); font-size: 13px; padding: 40px 0; }
+      .error-state { text-align: center; color: #A32D2D; font-size: 13px; padding: 24px 0; }
+
+      /* Feed layout: one section per category, 3 compact headline rows each. */
+      #feed { display: flex; flex-direction: column; gap: 10px; }
+      .section {
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: #fff;
+        overflow: hidden;
+      }
+      .section-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 10px 14px;
+        background: #FBFAF7;
+        border-bottom: 1px solid var(--border);
+      }
+      .section-title {
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 0.3px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .section-emoji { font-size: 15px; }
+      .section-count { font-size: 11px; color: var(--text-muted); }
+      .items { display: flex; flex-direction: column; }
+      .item {
+        display: block;
+        padding: 10px 14px;
+        text-decoration: none;
+        color: inherit;
+        border-bottom: 1px solid var(--border);
+      }
+      .items a.item:last-child { border-bottom: none; }
+      .item:hover { background: #FBFAF7; }
+      .item-headline { font-size: 13.5px; line-height: 1.4; color: var(--text-primary); }
+      .item-meta { font-size: 11px; color: var(--text-muted); margin-top: 3px; display: flex; gap: 6px; align-items: center; }
+      .item-source { color: var(--text-secondary); font-weight: 600; }
+      .item-empty { padding: 10px 14px; font-size: 12px; color: var(--text-muted); }
+
+      .footer { text-align: center; color: var(--text-muted); font-size: 12px; margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--border); }
+      .footer a { color: var(--text-secondary); text-decoration: none; }
+      .footer a:hover { text-decoration: underline; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="header">
+        <div class="banner" role="group" aria-label="Parashar Radar">
+          <a class="banner-half banner-left" href="index.html" aria-label="Back to watchlist" title="Back to watchlist"></a>
+          <a class="banner-half banner-right" href="guide.html" aria-label="How to read this page" title="How to read this page"></a>
+          <svg class="banner-icon" viewBox="0 0 100 100" aria-hidden="true">
+            <defs>
+              <linearGradient id="bannerGrad" x1="0" y1="1" x2="1" y2="0">
+                <stop offset="0" stop-color="#9C6B0A" />
+                <stop offset="0.5" stop-color="#F5C542" />
+                <stop offset="1" stop-color="#FFE9A8" />
+              </linearGradient>
+            </defs>
+            <circle cx="50" cy="50" r="46" fill="none" stroke="url(#bannerGrad)" stroke-width="2" opacity="0.45" />
+            <circle cx="50" cy="50" r="34" fill="none" stroke="url(#bannerGrad)" stroke-width="2" opacity="0.6" />
+            <circle cx="50" cy="50" r="22" fill="none" stroke="url(#bannerGrad)" stroke-width="2" opacity="0.8" />
+            <polyline points="20,65 35,55 45,60 60,35 70,42" fill="none" stroke="url(#bannerGrad)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+            <polyline points="60,35 76,18" fill="none" stroke="url(#bannerGrad)" stroke-width="4" stroke-linecap="round" />
+            <polygon points="76,18 67,20 74,27" fill="url(#bannerGrad)" />
+          </svg>
+          <div class="banner-text">
+            <div class="banner-title">NEWS DIGEST</div>
+            <div class="banner-sub">EXECUTIVE SUMMARY &middot; TOP HEADLINES</div>
+          </div>
+        </div>
+        <div class="controls">
+          <span class="updated" id="updatedLabel">Loading&hellip;</span>
+          <button id="refreshBtn">Refresh</button>
+        </div>
+      </div>
+
+      <div id="feed">
+        <div class="empty-state">Loading latest headlines&hellip;</div>
+      </div>
+
+      <div class="footer">
+        <a href="index.html">Stock watchlist</a>
+      </div>
+    </div>
+
+    <script>
+      var WORKER_URL = "https://news-digest-proxy.pawan227.workers.dev/";
+
+      // Order and emoji shown per category — keys must match the Worker's
+      // response (news-worker/worker.js CATEGORIES).
+      var SECTIONS = [
+        { key: "usNews", emoji: "🇺🇸", label: "US News" },
+        { key: "usStocks", emoji: "📈", label: "US Stock News" },
+        { key: "indiaNews", emoji: "🇮🇳", label: "India News" },
+        { key: "indiaStocks", emoji: "📊", label: "India Stock News" },
+        { key: "world", emoji: "🌍", label: "International News" },
+        { key: "cricket", emoji: "🏏", label: "Cricket News" },
+        { key: "sports", emoji: "🏆", label: "Sports News" },
+        { key: "hyderabad", emoji: "📍", label: "Hyderabad News" },
+        { key: "immigration", emoji: "🛂", label: "US Immigration / H-1B" }
+      ];
+
+      function escapeHtml(str) {
+        return String(str || "").replace(/[&<>"']/g, function (c) {
+          return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+        });
+      }
+
+      function timeAgo(iso) {
+        if (!iso) return "";
+        var diffMs = Date.now() - new Date(iso).getTime();
+        if (isNaN(diffMs)) return "";
+        var mins = Math.round(diffMs / 60000);
+        if (mins < 1) return "just now";
+        if (mins < 60) return mins + "m ago";
+        var hours = Math.round(mins / 60);
+        if (hours < 24) return hours + "h ago";
+        var days = Math.round(hours / 24);
+        return days + "d ago";
+      }
+
+      function renderSection(section, data) {
+        var items = (data && data.items) || [];
+        var itemsHtml = items.length
+          ? items.map(function (item) {
+              var meta = [];
+              if (item.source) meta.push('<span class="item-source">' + escapeHtml(item.source) + "</span>");
+              var ago = timeAgo(item.publishedAt);
+              if (ago) meta.push("<span>" + ago + "</span>");
+              return (
+                '<a class="item" href="' + escapeHtml(item.url) + '" target="_blank" rel="noopener noreferrer">' +
+                  '<div class="item-headline">' + escapeHtml(item.title) + "</div>" +
+                  '<div class="item-meta">' + meta.join('<span>&middot;</span>') + "</div>" +
+                "</a>"
+              );
+            }).join("")
+          : '<div class="item-empty">No headlines available right now.</div>';
+
+        return (
+          '<div class="section">' +
+            '<div class="section-head">' +
+              '<div class="section-title"><span class="section-emoji">' + section.emoji + "</span>" +
+                escapeHtml((data && data.label) || section.label) +
+              "</div>" +
+              '<div class="section-count">' + items.length + " of 3</div>" +
+            "</div>" +
+            '<div class="items">' + itemsHtml + "</div>" +
+          "</div>"
+        );
+      }
+
+      function render(digest) {
+        var html = SECTIONS.map(function (section) {
+          return renderSection(section, digest.categories[section.key]);
+        }).join("");
+        document.getElementById("feed").innerHTML = html;
+
+        if (digest.updated) {
+          var d = new Date(digest.updated);
+          document.getElementById("updatedLabel").textContent = "Updated " + d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        }
+      }
+
+      function loadDigest() {
+        var btn = document.getElementById("refreshBtn");
+        btn.disabled = true;
+        btn.textContent = "Loading…";
+        document.getElementById("updatedLabel").textContent = "Loading…";
+
+        fetch(WORKER_URL)
+          .then(function (res) {
+            if (!res.ok) throw new Error("Worker returned " + res.status);
+            return res.json();
+          })
+          .then(function (digest) {
+            if (digest.error) throw new Error(digest.error);
+            render(digest);
+          })
+          .catch(function (err) {
+            document.getElementById("feed").innerHTML =
+              '<div class="error-state">Could not load headlines (' + escapeHtml(err.message) + "). Try Refresh.</div>";
+          })
+          .finally(function () {
+            btn.disabled = false;
+            btn.textContent = "Refresh";
+          });
+      }
+
+      document.getElementById("refreshBtn").addEventListener("click", loadDigest);
+
+      // Loads fresh headlines on every page open — no stale "click refresh
+      // first" step, matching the request that this page refresh on load.
+      loadDigest();
+    </script>
+  </body>
+</html>
