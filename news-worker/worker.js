@@ -181,6 +181,31 @@ function extractImage(block) {
   return null;
 }
 
+var SUMMARY_MAX_CHARS = 160;
+
+// Most feeds' <description> is a genuine 1-2 sentence summary; TOI/ET's is a
+// full <a><img>...caption blob, Bing's is "quote..." with no real structure.
+// Strip tags, collapse whitespace, cut cleanly at a word boundary, and bail
+// out entirely if nothing meaningful is left (so a feed with a junk/empty
+// description doesn't render an empty summary line).
+function cleanSummary(rawDescription, title) {
+  if (!rawDescription) return null;
+  var text = stripTags(rawDescription).replace(/\s+/g, " ").trim();
+  if (!text) return null;
+
+  // Some feeds just repeat the title as the description — skip those too.
+  if (text.toLowerCase() === (title || "").toLowerCase()) return null;
+  // ESPN's live-score feed literally puts the string "null" here when a game
+  // has no recap text yet.
+  if (text.toLowerCase() === "null") return null;
+
+  if (text.length <= SUMMARY_MAX_CHARS) return text;
+  var cut = text.slice(0, SUMMARY_MAX_CHARS);
+  var lastSpace = cut.lastIndexOf(" ");
+  if (lastSpace > 40) cut = cut.slice(0, lastSpace);
+  return cut.trim() + "…";
+}
+
 function parseRssItems(xml, feedSource) {
   var items = [];
   var blocks = xml.match(/<item[\s\S]*?<\/item>/gi) || [];
@@ -212,6 +237,7 @@ function parseRssItems(xml, feedSource) {
       url: link.trim(),
       source: source,
       image: toHttps(extractImage(block)),
+      summary: cleanSummary(extractTag(block, "description"), title),
       publishedAt: pubDate ? pubDate.toISOString() : null,
       _sortTime: pubDate ? pubDate.getTime() : 0,
     });
@@ -266,7 +292,14 @@ async function fetchCategory(category) {
   deduped.sort(function (a, b) { return b._sortTime - a._sortTime; });
 
   return deduped.slice(0, ITEMS_PER_CATEGORY).map(function (item) {
-    return { title: item.title, url: item.url, source: item.source, image: item.image, publishedAt: item.publishedAt };
+    return {
+      title: item.title,
+      url: item.url,
+      source: item.source,
+      image: item.image,
+      summary: item.summary,
+      publishedAt: item.publishedAt,
+    };
   });
 }
 
