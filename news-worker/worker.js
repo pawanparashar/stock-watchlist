@@ -305,13 +305,14 @@ async function fetchCategory(category) {
 
 var DIGEST_MODEL = "@cf/meta/llama-3.1-8b-instruct-fp8";
 
-// One synthesized sentence per section ("US News: three stories about X, Y,
-// Z") via Workers AI, built from that section's own top-3 headlines+
-// summaries — not a separate fetch, so it can't introduce anything not
-// already in the section. Runs once per 5-minute cache window (see
-// CACHE_TTL_SECONDS), not per page load. Best-effort: any failure (model
-// error, timeout, empty category) just omits the section summary rather than
-// breaking the section's headlines, which are the part that matters.
+// A short synthesized paragraph per section (2-5 sentences, one per
+// headline that has enough to say) via Workers AI, built from that
+// section's own top-3 headlines+summaries — not a separate fetch, so it
+// can't introduce anything not already in the section. Runs once per
+// 5-minute cache window (see CACHE_TTL_SECONDS), not per page load.
+// Best-effort: any failure (model error, timeout, empty category) just
+// omits the section summary rather than breaking the section's headlines,
+// which are the part that matters.
 async function generateSectionDigest(env, category, items) {
   if (!env.AI || !items.length) return null;
 
@@ -323,19 +324,21 @@ async function generateSectionDigest(env, category, items) {
 
   var prompt =
     "Section: " + category.label + "\n\nHeadlines:\n" + numbered +
-    "\n\nWrite one plain sentence (max 30 words) summarizing what these headlines cover. " +
-    "State facts only, no commentary, no \"this section\" framing, no markdown.";
+    "\n\nWrite a " + items.length + "-sentence plain-text summary, one sentence per headline above, " +
+    "in the same order, each sentence covering what that headline/summary says. " +
+    "State facts only, no commentary, no \"this section\" framing, no markdown, no bullet points — " +
+    "just " + items.length + " sentences in a row.";
 
   try {
     var result = await Promise.race([
       env.AI.run(DIGEST_MODEL, {
         messages: [
-          { role: "system", content: "You write a single terse, neutral sentence synthesizing a set of news headlines. Output only that sentence — no preamble, no quotes, no trailing period commentary." },
+          { role: "system", content: "You write short, neutral multi-sentence summaries of news headlines — one plain sentence per headline, in order. Output only those sentences as flowing text, no preamble, no quotes, no numbering, no markdown." },
           { role: "user", content: prompt },
         ],
-        max_tokens: 90,
+        max_tokens: 220,
       }),
-      new Promise(function (_, reject) { setTimeout(function () { reject(new Error("AI timeout")); }, 9000); }),
+      new Promise(function (_, reject) { setTimeout(function () { reject(new Error("AI timeout")); }, 15000); }),
     ]);
     var text = result && (result.response || result.result || "");
     text = (text || "").trim().replace(/^["'\s]+|["'\s]+$/g, "");
