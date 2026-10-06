@@ -124,6 +124,16 @@
       }
       .section-emoji { font-size: 15px; }
       .section-count { font-size: 11px; color: var(--text-muted); }
+      /* AI-synthesized one-line digest for the section, sitting between the
+         header and the individual headlines below it. */
+      .section-digest {
+        font-size: 12.5px;
+        line-height: 1.5;
+        color: var(--text-secondary);
+        padding: 10px 14px;
+        background: #FBFAF7;
+        border-bottom: 1px solid var(--border);
+      }
       .items { display: flex; flex-direction: column; }
       .item {
         display: flex;
@@ -299,6 +309,7 @@
               "</div>" +
               '<div class="section-count">' + items.length + " of 3</div>" +
             "</div>" +
+            (data && data.summary ? '<div class="section-digest">' + escapeHtml(data.summary) + "</div>" : "") +
             '<div class="items">' + itemsHtml + "</div>" +
           "</div>"
         );

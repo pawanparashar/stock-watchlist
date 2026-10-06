@@ -303,11 +303,56 @@ async function fetchCategory(category) {
   });
 }
 
-async function buildDigest() {
+var DIGEST_MODEL = "@cf/meta/llama-3.1-8b-instruct-fp8";
+
+// One synthesized sentence per section ("US News: three stories about X, Y,
+// Z") via Workers AI, built from that section's own top-3 headlines+
+// summaries — not a separate fetch, so it can't introduce anything not
+// already in the section. Runs once per 5-minute cache window (see
+// CACHE_TTL_SECONDS), not per page load. Best-effort: any failure (model
+// error, timeout, empty category) just omits the section summary rather than
+// breaking the section's headlines, which are the part that matters.
+async function generateSectionDigest(env, category, items) {
+  if (!env.AI || !items.length) return null;
+
+  var numbered = items
+    .map(function (item, i) {
+      return (i + 1) + ". " + item.title + (item.summary ? " — " + item.summary : "");
+    })
+    .join("\n");
+
+  var prompt =
+    "Section: " + category.label + "\n\nHeadlines:\n" + numbered +
+    "\n\nWrite one plain sentence (max 30 words) summarizing what these headlines cover. " +
+    "State facts only, no commentary, no \"this section\" framing, no markdown.";
+
+  try {
+    var result = await Promise.race([
+      env.AI.run(DIGEST_MODEL, {
+        messages: [
+          { role: "system", content: "You write a single terse, neutral sentence synthesizing a set of news headlines. Output only that sentence — no preamble, no quotes, no trailing period commentary." },
+          { role: "user", content: prompt },
+        ],
+        max_tokens: 90,
+      }),
+      new Promise(function (_, reject) { setTimeout(function () { reject(new Error("AI timeout")); }, 9000); }),
+    ]);
+    var text = result && (result.response || result.result || "");
+    text = (text || "").trim().replace(/^["'\s]+|["'\s]+$/g, "");
+    return text || null;
+  } catch (err) {
+    return null;
+  }
+}
+
+async function buildDigest(env) {
   var categoryResults = await Promise.all(CATEGORIES.map(fetchCategory));
+  var digestTexts = await Promise.all(
+    CATEGORIES.map(function (cat, i) { return generateSectionDigest(env, cat, categoryResults[i]); })
+  );
   var categories = {};
   CATEGORIES.forEach(function (cat, i) {
-    categories[cat.key] = { label: cat.label, items: categoryResults[i] };
+    categories[cat.key] = { label: cat.label, summary: digestTexts[i], items: categoryResults[i] };
   });
   return { updated: new Date().toISOString(), categories: categories };
 }
@@ -328,7 +373,7 @@ export default {
     }
 
     try {
-      var digest = await buildDigest();
+      var digest = await buildDigest(env);
       var response = jsonResponse(digest);
       var toCache = response.clone();
       toCache.headers.set("Cache-Control", "public, max-age=" + CACHE_TTL_SECONDS);
