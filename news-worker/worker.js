@@ -149,6 +149,38 @@ function stripTags(str) {
   return str ? str.replace(/<[^>]*>/g, "").trim() : str;
 }
 
+// Thumbnail image, when a feed includes one — tried in order of how common
+// each pattern is across our feeds: <enclosure type="image/...">,
+// <media:thumbnail>, <media:content medium="image">, Bing's <News:Image>
+// (plain text URL), and ESPNcricinfo's <coverImages> (also plain text URL).
+function toHttps(url) {
+  if (!url) return url;
+  return url.indexOf("http://") === 0 ? "https://" + url.slice(7) : url;
+}
+
+function extractImage(block) {
+  var m =
+    block.match(/<enclosure[^>]*\burl="([^"]+)"[^>]*\btype="image\/[^"]*"/i) ||
+    block.match(/<enclosure[^>]*\btype="image\/[^"]*"[^>]*\burl="([^"]+)"/i);
+  if (m) return m[1];
+
+  m = block.match(/<media:thumbnail[^>]*\burl="([^"]+)"/i);
+  if (m) return m[1];
+
+  m =
+    block.match(/<media:content[^>]*\burl="([^"]+)"[^>]*\bmedium="image"/i) ||
+    block.match(/<media:content[^>]*\bmedium="image"[^>]*\burl="([^"]+)"/i);
+  if (m) return m[1];
+
+  var newsImage = extractTag(block, "News:Image");
+  if (newsImage) return newsImage;
+
+  var coverImage = extractTag(block, "coverImages");
+  if (coverImage) return coverImage.split(",")[0].trim();
+
+  return null;
+}
+
 function parseRssItems(xml, feedSource) {
   var items = [];
   var blocks = xml.match(/<item[\s\S]*?<\/item>/gi) || [];
@@ -179,6 +211,7 @@ function parseRssItems(xml, feedSource) {
       title: title,
       url: link.trim(),
       source: source,
+      image: toHttps(extractImage(block)),
       publishedAt: pubDate ? pubDate.toISOString() : null,
       _sortTime: pubDate ? pubDate.getTime() : 0,
     });
@@ -233,7 +266,7 @@ async function fetchCategory(category) {
   deduped.sort(function (a, b) { return b._sortTime - a._sortTime; });
 
   return deduped.slice(0, ITEMS_PER_CATEGORY).map(function (item) {
-    return { title: item.title, url: item.url, source: item.source, publishedAt: item.publishedAt };
+    return { title: item.title, url: item.url, source: item.source, image: item.image, publishedAt: item.publishedAt };
   });
 }
 
