@@ -348,16 +348,65 @@ async function generateSectionDigest(env, category, items) {
   }
 }
 
+// The "Today's Briefing" line at the top of the page — one short paragraph
+// pulled across all 9 sections, not just a concatenation of the per-section
+// digests below it. Built straight from each section's own top-3 headlines
+// (not from the per-section digest text), so it can run in parallel with
+// generateSectionDigest instead of waiting on it — both read the same
+// already-fetched items, they just produce different-shaped output.
+async function generateOverallBriefing(env, categoryResults) {
+  if (!env.AI) return null;
+
+  var hasAnyItems = categoryResults.some(function (items) { return items.length > 0; });
+  if (!hasAnyItems) return null;
+
+  var sections = CATEGORIES.map(function (cat, i) {
+    var items = categoryResults[i];
+    if (!items.length) return null;
+    var lines = items.map(function (item) { return "- " + item.title; }).join("\n");
+    return cat.label + ":\n" + lines;
+  }).filter(Boolean).join("\n\n");
+
+  var prompt =
+    "Here are today's top headlines across sections of a personal news digest:\n\n" + sections +
+    "\n\nWrite a 4-6 sentence \"Today's Briefing\" opening paragraph that highlights the most " +
+    "notable developments across these sections as flowing prose. State facts only, no commentary, " +
+    "no headers, no bullet points, no section-by-section structure — just a readable paragraph a " +
+    "person could read in 15 seconds to know what's going on today.";
+
+  try {
+    var result = await Promise.race([
+      env.AI.run(DIGEST_MODEL, {
+        messages: [
+          { role: "system", content: "You write a short, neutral 'Today's Briefing' paragraph summarizing the most notable items across several news sections. Output only that paragraph as flowing prose — no preamble, no quotes, no markdown, no headers." },
+          { role: "user", content: prompt },
+        ],
+        max_tokens: 260,
+      }),
+      new Promise(function (_, reject) { setTimeout(function () { reject(new Error("AI timeout")); }, 15000); }),
+    ]);
+    var text = result && (result.response || result.result || "");
+    text = (text || "").trim().replace(/^["'\s]+|["'\s]+$/g, "");
+    return text || null;
+  } catch (err) {
+    return null;
+  }
+}
+
 async function buildDigest(env) {
   var categoryResults = await Promise.all(CATEGORIES.map(fetchCategory));
-  var digestTexts = await Promise.all(
-    CATEGORIES.map(function (cat, i) { return generateSectionDigest(env, cat, categoryResults[i]); })
-  );
+
+  var briefingPromise = generateOverallBriefing(env, categoryResults);
+  var digestPromises = CATEGORIES.map(function (cat, i) { return generateSectionDigest(env, cat, categoryResults[i]); });
+  var all = await Promise.all([briefingPromise].concat(digestPromises));
+  var briefing = all[0];
+  var digestTexts = all.slice(1);
+
   var categories = {};
   CATEGORIES.forEach(function (cat, i) {
     categories[cat.key] = { label: cat.label, summary: digestTexts[i], items: categoryResults[i] };
   });
-  return { updated: new Date().toISOString(), categories: categories };
+  return { updated: new Date().toISOString(), briefing: briefing, categories: categories };
 }
 
 export default {

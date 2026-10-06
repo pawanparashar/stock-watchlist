@@ -98,6 +98,27 @@
       .error-state { text-align: center; color: #A32D2D; font-size: 13px; padding: 24px 0; }
 
       /* Feed layout: one section per category, 3 compact headline rows each. */
+      /* Today's Briefing — one AI paragraph synthesized across every
+         section, sitting above the per-section feed. Gold accent border
+         ties it back to the banner so it reads as "the one thing to read
+         if you only read one thing", not just another section. */
+      #briefing:not(:empty) {
+        border: 1px solid #E6CD8C;
+        border-left: 4px solid #D4A017;
+        border-radius: var(--radius);
+        background: #FFFBF0;
+        padding: 14px 16px;
+        margin-bottom: 14px;
+      }
+      .briefing-label {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.8px;
+        color: #9C6B0A;
+        margin-bottom: 6px;
+      }
+      .briefing-text { font-size: 13.5px; line-height: 1.55; color: var(--text-primary); }
+
       #feed { display: flex; flex-direction: column; gap: 10px; }
       .section {
         border: 1px solid var(--border);
@@ -220,6 +241,8 @@
         </div>
       </div>
 
+      <div id="briefing"></div>
+
       <div id="feed">
         <div class="empty-state">Loading latest headlines&hellip;</div>
       </div>
@@ -316,6 +339,10 @@
       }
 
       function render(digest) {
+        document.getElementById("briefing").innerHTML = digest.briefing
+          ? '<div class="briefing-label">TODAY’S BRIEFING</div><div class="briefing-text">' + escapeHtml(digest.briefing) + "</div>"
+          : "";
+
         var html = SECTIONS.map(function (section) {
           return renderSection(section, digest.categories[section.key]);
         }).join("");
