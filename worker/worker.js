@@ -364,9 +364,14 @@ function computeRow(symbol, bars) {
 
   row.sma200 = computeSma200Context(closes, price);
 
-  // Compact closing-price history for a frontend sparkline. Reuses bars already
-  // fetched for the indicators above, no extra API calls.
-  row.sparkline = bars.slice(-60).map(function (b) { return { t: b.t.slice(0, 10), c: round(b.c, 2) }; });
+  // Compact daily history for frontend charts — full OHLCV, not just closes,
+  // so a consumer can draw a real candlestick+volume chart (board.html's
+  // ticker detail view) as well as the simple close-only sparkline
+  // (index.html's card chart, which only reads .c and ignores the rest).
+  // Reuses bars already fetched for the indicators above, no extra API calls.
+  row.sparkline = bars.slice(-60).map(function (b) {
+    return { t: b.t.slice(0, 10), o: round(b.o, 2), h: round(b.h, 2), l: round(b.l, 2), c: round(b.c, 2), v: b.v };
+  });
 
   return row;
 }

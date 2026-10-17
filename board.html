@@ -27,11 +27,12 @@
       }
       a { color: #D4A017; }
       .wrap {
-        min-height: 100vh;
-        padding: 20px 28px 28px;
+        height: 100vh;
+        overflow: hidden;
+        padding: 20px 28px 20px;
         display: flex;
         flex-direction: column;
-        gap: 16px;
+        gap: 14px;
       }
 
       /* ---- Header ---- */
@@ -76,22 +77,35 @@
       #refreshBtn:disabled { opacity: 0.5; cursor: default; }
 
       /* ---- Tile grid ---- */
+      /* Fixed 5x2 for the board's actual use case (10 tickers on a TV at a
+         known wide aspect ratio) so tiles stretch to fill the full height
+         with no dead space below the grid, rather than sizing to content
+         and leaving a gap above the footer. Falls back to a flowing grid
+         at narrow widths (a laptop browser testing this page). */
       #grid {
+        flex: 1;
+        min-height: 0;
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        grid-template-rows: repeat(2, 1fr);
         gap: 14px;
+      }
+      @media (max-width: 1100px) {
+        #grid { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); grid-template-rows: none; }
       }
       .tile {
         position: relative;
         background: var(--tile-bg);
         border: 1px solid var(--tile-border);
         border-radius: 12px;
-        padding: 15px 16px;
+        padding: 18px 20px;
         display: flex;
         flex-direction: column;
-        gap: 9px;
+        justify-content: space-between;
+        gap: 10px;
         cursor: pointer;
         transition: background 0.15s ease, border-color 0.15s ease;
+        overflow: hidden;
       }
       .tile:hover { border-color: var(--tile-border-hover); background: #181816; }
       @keyframes flashGlow {
@@ -106,25 +120,25 @@
         padding: 2px 8px; border-radius: 8px;
       }
       .tile-head { display: flex; align-items: baseline; justify-content: space-between; }
-      .tile-ticker { font-size: 19px; font-weight: 800; color: var(--text-primary); }
-      .tile-atr { font-size: 10px; color: var(--text-muted); }
-      .tile-price-row { display: flex; align-items: baseline; gap: 9px; }
-      .tile-price { font-size: 21px; font-weight: 700; color: var(--text-primary); }
-      .tile-change { font-size: 12px; font-weight: 600; }
+      .tile-ticker { font-size: 23px; font-weight: 800; color: var(--text-primary); }
+      .tile-atr { font-size: 11px; color: var(--text-muted); }
+      .tile-price-row { display: flex; align-items: baseline; gap: 10px; }
+      .tile-price { font-size: 25px; font-weight: 700; color: var(--text-primary); }
+      .tile-change { font-size: 14px; font-weight: 600; }
       .up { color: #6FE39A; }
       .down { color: #E08A8A; }
       .flat { color: var(--text-muted); }
       .signal-pill {
         display: inline-flex; align-self: flex-start;
-        font-size: 12px; font-weight: 800; letter-spacing: 0.4px;
-        padding: 4px 13px; border-radius: 13px;
+        font-size: 13px; font-weight: 800; letter-spacing: 0.4px;
+        padding: 5px 15px; border-radius: 14px;
       }
-      .gauge-meta { display: flex; justify-content: space-between; font-size: 9.5px; color: var(--text-muted); margin-bottom: 3px; }
-      .gauge-track { position: relative; height: 6px; border-radius: 3px; }
-      .gauge-marker { position: absolute; top: -3px; width: 2px; height: 12px; background: #F5C542; border-radius: 1px; }
-      .gauge-note { font-size: 9.5px; color: #9C9A92; margin-top: 3px; }
-      .badges-row { display: flex; gap: 5px; flex-wrap: wrap; }
-      .mini-badge { font-size: 9.5px; padding: 2px 7px; border-radius: 9px; white-space: nowrap; }
+      .gauge-meta { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--text-muted); margin-bottom: 4px; }
+      .gauge-track { position: relative; height: 7px; border-radius: 3.5px; }
+      .gauge-marker { position: absolute; top: -3px; width: 2px; height: 13px; background: #F5C542; border-radius: 1px; }
+      .gauge-note { font-size: 10.5px; color: #9C9A92; margin-top: 4px; }
+      .badges-row { display: flex; gap: 6px; flex-wrap: wrap; }
+      .mini-badge { font-size: 10.5px; padding: 3px 9px; border-radius: 10px; white-space: nowrap; }
       .tile-error { font-size: 12px; color: #E08A8A; padding: 10px 0; }
 
       .board-footer { margin-top: auto; padding-top: 12px; border-top: 1px solid #1E1D1A; font-size: 10.5px; color: var(--text-faint); text-align: center; }
@@ -545,14 +559,32 @@
       document.getElementById("refreshBtn").addEventListener("click", function () { loadData(false); });
 
       // ---- Detail overlay ----
+      // Real candlestick + volume chart (worker's sparkline carries full OHLCV
+      // now, not just closes). Falls back gracefully if a row somehow only has
+      // close prices (older cached response): draws a close-only line instead
+      // of guessing wicks that aren't there.
       function sparklineSvg(row, tier) {
         var points = row.sparkline;
         if (!points || points.length < 2) return "";
-        var closes = points.map(function (p) { return p.c; });
-        var w = 760, h = 220, padL = 50, padR = 10, padT = 14, padB = 20;
-        var plotW = w - padL - padR, plotH = h - padT - padB;
+        var hasOhlc = points[0].o !== undefined && points[0].h !== undefined && points[0].l !== undefined;
 
-        var min = Math.min.apply(null, closes), max = Math.max.apply(null, closes);
+        var w = 760, h = 260;
+        var padL = 54, padR = 10;
+        var priceTop = 14, priceH = 172, priceBottom = priceTop + priceH;
+        var volGap = 10, volTop = priceBottom + volGap, volH = 42;
+        var dateLabelY = h - 6;
+        var plotW = w - padL - padR;
+
+        var n = points.length;
+        var slot = plotW / n;
+        var candleW = Math.max(1.5, Math.min(10, slot * 0.62));
+
+        function xCenter(i) { return padL + (i + 0.5) * slot; }
+
+        var highs = hasOhlc ? points.map(function (p) { return p.h; }) : points.map(function (p) { return p.c; });
+        var lows = hasOhlc ? points.map(function (p) { return p.l; }) : points.map(function (p) { return p.c; });
+        var min = Math.min.apply(null, lows), max = Math.max.apply(null, highs);
+
         var sizing = (tier.label === "Entry" || tier.label === "Entry+") ? computeSizing(row) : null;
         if (sizing) { min = Math.min(min, sizing.stopPrice); max = Math.max(max, sizing.buyPrice); }
         var exitL = (tier.label === "Exit" || tier.label === "Exit+") ? computeExitLevels(row) : null;
@@ -560,15 +592,17 @@
         var span = (max - min) || 1, pad = span * 0.06;
         min -= pad; max += pad; span = max - min;
 
-        function x(i) { return padL + (i / (closes.length - 1)) * plotW; }
-        function y(v) { return padT + (1 - (v - min) / span) * plotH; }
+        function y(v) { return priceTop + (1 - (v - min) / span) * priceH; }
 
         var svg = '<svg class="sparkline" viewBox="0 0 ' + w + ' ' + h + '">';
+
+        // Price gridlines + labels
         [max - pad, (max + min) / 2, min + pad].forEach(function (p) {
           var yy = y(p).toFixed(1);
           svg += '<line x1="' + padL + '" y1="' + yy + '" x2="' + (w - padR) + '" y2="' + yy + '" stroke="#201F1C" stroke-width="1"/>';
           svg += '<text x="' + (padL - 6) + '" y="' + (parseFloat(yy) + 3) + '" text-anchor="end" class="chart-label">' + fmt(p) + '</text>';
         });
+
         if (sizing) {
           var stopY = y(sizing.stopPrice).toFixed(1);
           svg += '<line x1="' + padL + '" y1="' + stopY + '" x2="' + (w - padR) + '" y2="' + stopY + '" stroke="#E9A6A6" stroke-width="1" stroke-dasharray="4 3"/>';
@@ -579,9 +613,43 @@
           svg += '<line x1="' + padL + '" y1="' + trailY + '" x2="' + (w - padR) + '" y2="' + trailY + '" stroke="#D9A441" stroke-dasharray="4 3" stroke-width="1"/>';
           svg += '<text x="' + (w - padR - 4) + '" y="' + (parseFloat(trailY) - 4) + '" text-anchor="end" class="chart-label" style="fill:#D9A441">trail stop ' + fmt(exitL.trailPrice) + '</text>';
         }
-        var lineColor = closes[closes.length - 1] >= closes[0] ? "#6FE39A" : "#E08A8A";
-        var linePoints = closes.map(function (v, i) { return x(i).toFixed(1) + "," + y(v).toFixed(1); }).join(" ");
-        svg += '<polyline points="' + linePoints + '" fill="none" stroke="' + lineColor + '" stroke-width="2"/>';
+
+        if (hasOhlc) {
+          // Candles: wick = high/low line, body = open/close rect.
+          points.forEach(function (p, i) {
+            var up = p.c >= p.o;
+            var color = up ? "#6FE39A" : "#E08A8A";
+            var xc = xCenter(i);
+            var yHigh = y(p.h).toFixed(1), yLow = y(p.l).toFixed(1);
+            svg += '<line x1="' + xc.toFixed(1) + '" y1="' + yHigh + '" x2="' + xc.toFixed(1) + '" y2="' + yLow + '" stroke="' + color + '" stroke-width="1"/>';
+            var yOpen = y(p.o), yClose = y(p.c);
+            var bodyTop = Math.min(yOpen, yClose), bodyH = Math.max(1, Math.abs(yClose - yOpen));
+            svg += '<rect x="' + (xc - candleW / 2).toFixed(1) + '" y="' + bodyTop.toFixed(1) + '" width="' + candleW.toFixed(1) + '" height="' + bodyH.toFixed(1) + '" fill="' + color + '"/>';
+          });
+        } else {
+          var closes = points.map(function (p) { return p.c; });
+          var lineColor = closes[closes.length - 1] >= closes[0] ? "#6FE39A" : "#E08A8A";
+          var linePoints = closes.map(function (v, i) { return xCenter(i).toFixed(1) + "," + y(v).toFixed(1); }).join(" ");
+          svg += '<polyline points="' + linePoints + '" fill="none" stroke="' + lineColor + '" stroke-width="2"/>';
+        }
+
+        // Volume panel
+        svg += '<text x="' + padL + '" y="' + (volTop - 2) + '" class="chart-label">Volume</text>';
+        var volumes = points.map(function (p) { return p.v || 0; });
+        var maxVol = Math.max.apply(null, volumes) || 1;
+        points.forEach(function (p, i) {
+          var up = hasOhlc ? p.c >= p.o : true;
+          var color = up ? "rgba(111,227,154,0.55)" : "rgba(224,138,138,0.55)";
+          var xc = xCenter(i);
+          var barH = Math.max(1, ((p.v || 0) / maxVol) * volH);
+          svg += '<rect x="' + (xc - candleW / 2).toFixed(1) + '" y="' + (volTop + volH - barH).toFixed(1) + '" width="' + candleW.toFixed(1) + '" height="' + barH.toFixed(1) + '" fill="' + color + '"/>';
+        });
+        svg += '<line x1="' + padL + '" y1="' + (volTop + volH) + '" x2="' + (w - padR) + '" y2="' + (volTop + volH) + '" stroke="#201F1C" stroke-width="1"/>';
+
+        // Date labels
+        svg += '<text x="' + padL + '" y="' + dateLabelY + '" text-anchor="start" class="chart-label">' + points[0].t + '</text>';
+        svg += '<text x="' + (w - padR) + '" y="' + dateLabelY + '" text-anchor="end" class="chart-label">' + points[n - 1].t + '</text>';
+
         svg += '</svg>';
         return svg;
       }
@@ -675,7 +743,7 @@
           '</div>' +
           '<div class="detail-cols">' +
             '<div class="detail-col">' +
-              '<div class="card"><div class="card-label">60-DAY CLOSE</div>' + sparklineSvg(row, tier) + '</div>' +
+              '<div class="card"><div class="card-label">60-DAY CHART</div>' + sparklineSvg(row, tier) + '</div>' +
               (levelsRowHtml(row, tier) ? '<div class="card">' + levelsRowHtml(row, tier) + '</div>' : '') +
               '<div class="card"><div class="card-label">WHY ' + tier.label.toUpperCase() + ' · SCORE ' + (detailed.score >= 0 ? '+' : '') + detailed.score + '</div>' + reasonsHtml(detailed) + '</div>' +
             '</div>' +
