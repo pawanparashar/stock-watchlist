@@ -149,10 +149,11 @@
         gap: 3px;
         min-width: 0;
       }
-      .macro-label { font-size: 13px; font-weight: 700; letter-spacing: 0.2px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .macro-label { font-size: 12.5px; font-weight: 700; letter-spacing: 0.2px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
       .macro-price-row { display: flex; align-items: baseline; gap: 8px; }
       .macro-price { font-size: 16px; font-weight: 700; color: var(--text-primary); }
       .macro-change { font-size: 12.5px; font-weight: 700; }
+      .macro-range { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
 
       /* ---- Tile grid ---- */
       /* Fixed 5x2 for the board's actual use case (10 tickers on a TV at a
@@ -322,23 +323,28 @@
       // Nikkei 225, FTSE 100, etc.) — each box below is priced through the
       // nearest liquid US-listed ETF that tracks it instead. Confirmed each
       // of these returns real data before wiring this up.
+      // `label` keeps the ticker in it on purpose — these prices are each
+      // an ETF proxy's own share price (e.g. EWJ's $94.88), not the index
+      // level you'd see quoted elsewhere (Nikkei is ~40,000+). Spelling out
+      // the ticker makes that obvious at a glance instead of needing an
+      // explanation every time; the % change is always the real signal.
       var MACRO_ROWS = [
         [ // Row 1 — broad markets
-          { symbol: "SPY",  label: "S&P 500" },
-          { symbol: "QQQ",  label: "Nasdaq 100" },
-          { symbol: "VIXY", label: "VIX (fear gauge)" },
-          { symbol: "EWJ",  label: "Japan" },
-          { symbol: "INDA", label: "India" },
-          { symbol: "EWU",  label: "UK" },
-          { symbol: "FXI",  label: "China" }
+          { symbol: "SPY",  label: "S&P 500 (SPY)" },
+          { symbol: "QQQ",  label: "Nasdaq 100 (QQQ)" },
+          { symbol: "VIXY", label: "VIX proxy (VIXY)" },
+          { symbol: "EWJ",  label: "Japan (EWJ)" },
+          { symbol: "INDA", label: "India (INDA)" },
+          { symbol: "EWU",  label: "UK (EWU)" },
+          { symbol: "FXI",  label: "China (FXI)" }
         ],
         [ // Row 2 — commodities & macro
-          { symbol: "GLD", label: "Gold" },
-          { symbol: "SLV", label: "Silver" },
-          { symbol: "USO", label: "Oil (WTI)" },
-          { symbol: "UUP", label: "US Dollar" },
-          { symbol: "TLT", label: "20Y Treasury" },
-          { symbol: "EWG", label: "Germany / Europe" }
+          { symbol: "GLD", label: "Gold (GLD)" },
+          { symbol: "SLV", label: "Silver (SLV)" },
+          { symbol: "USO", label: "Oil WTI (USO)" },
+          { symbol: "UUP", label: "US Dollar (UUP)" },
+          { symbol: "TLT", label: "20Y Treasury (TLT)" },
+          { symbol: "EWG", label: "Germany/Europe (EWG)" }
         ]
       ];
       var MACRO_SYMBOLS = MACRO_ROWS.reduce(function (acc, row) {
@@ -546,11 +552,14 @@
         var changePct = prevClose ? ((row.price - prevClose) / prevClose) * 100 : null;
         var changeClass = changePct === null ? "flat" : (changePct > 0 ? "up" : (changePct < 0 ? "down" : "flat"));
         var changeText = changePct === null ? "" : (changePct >= 0 ? "+" : "") + changePct.toFixed(1) + "%";
+        var w365 = row.windows ? row.windows["365d"] : null;
+        var rangeHtml = w365 ? '<div class="macro-range">365d ' + fmt(w365.low) + ' – ' + fmt(w365.high) + '</div>' : '';
         return (
           '<div class="macro-box">' +
             '<div class="macro-label">' + escapeHtml(meta.label) + '</div>' +
             '<div class="macro-price-row"><span class="macro-price">' + fmt(row.price) + '</span>' +
             (changeText ? '<span class="macro-change ' + changeClass + '">' + changeText + '</span>' : '') + '</div>' +
+            rangeHtml +
           '</div>'
         );
       }
