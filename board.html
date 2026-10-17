@@ -304,7 +304,7 @@
       </div>
 
       <div class="board-footer">
-        Tap a tile for the full breakdown &middot; refreshes automatically every 5 minutes &middot; gold glow = signal changed since last poll
+        Tap a tile for the full breakdown &middot; refreshes automatically every 2 minutes &middot; gold glow = signal changed since last poll
       </div>
     </div>
 
@@ -316,7 +316,13 @@
       // ---- Configuration ----
       var TICKERS = ["TSLA","SPCX","GOOGL","META","MSFT","NVDA","AMZN","AAPL","AMD","IREN"];
       var WORKER_URL = "https://stock-watchlist-proxy.pawan227.workers.dev/";
-      var REFRESH_MS = 5 * 60 * 1000;
+      // 2 min: comfortably safe on every limit involved (Alpaca Basic is
+      // 200 calls/min, this uses ~0.5/min batched; Cloudflare's free tier
+      // is 100k req/day, this uses ~720/day). The news-worker's own cache
+      // TTL for these endpoints was shortened to match (see
+      // BOARD_CACHE_TTL_SECONDS in news-worker/worker.js) so refreshing
+      // faster actually gets fresher data, not just a cache hit.
+      var REFRESH_MS = 2 * 60 * 1000;
 
       // Macro context strip, two rows above the tile grid — now REAL index/
       // futures points (e.g. Nifty "23,146.15"), not an ETF proxy's own

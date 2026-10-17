@@ -11,6 +11,11 @@
 const ALLOWED_ORIGIN = "https://pawanparashar.github.io";
 const ITEMS_PER_CATEGORY = 3;
 const CACHE_TTL_SECONDS = 300; // 5 min — fresh enough for a "latest headlines" feed, gentle on upstream
+// Shorter TTL just for the live board's endpoints (flash news + indices),
+// which now polls every 2 min — kept separate from CACHE_TTL_SECONDS so
+// news.html's digest (which also triggers paid Workers AI summary calls per
+// cache miss) doesn't get refreshed any more often than before.
+const BOARD_CACHE_TTL_SECONDS = 120;
 const FETCH_TIMEOUT_MS = 8000;
 
 // Each category merges 1-2 feeds, dedupes by link, sorts newest first, and
@@ -513,7 +518,7 @@ export default {
         var indicesItems = await fetchIndices();
         var indicesResponse = jsonResponse({ updated: new Date().toISOString(), items: indicesItems });
         var toCacheIndices = indicesResponse.clone();
-        toCacheIndices.headers.set("Cache-Control", "public, max-age=" + CACHE_TTL_SECONDS);
+        toCacheIndices.headers.set("Cache-Control", "public, max-age=" + BOARD_CACHE_TTL_SECONDS);
         ctx.waitUntil(cache.put(indicesCacheKey, toCacheIndices));
         return indicesResponse;
       } catch (err) {
@@ -531,7 +536,7 @@ export default {
         var items = await fetchCategory(FLASH_CATEGORY, FLASH_ITEMS);
         var flashResponse = jsonResponse({ updated: new Date().toISOString(), items: items });
         var toCacheFlash = flashResponse.clone();
-        toCacheFlash.headers.set("Cache-Control", "public, max-age=" + CACHE_TTL_SECONDS);
+        toCacheFlash.headers.set("Cache-Control", "public, max-age=" + BOARD_CACHE_TTL_SECONDS);
         ctx.waitUntil(cache.put(flashCacheKey, toCacheFlash));
         return flashResponse;
       } catch (err) {
