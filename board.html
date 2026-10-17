@@ -5,6 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Live Board — Parashar Radar</title>
     <link rel="icon" type="image/png" href="assets/favicon.png" />
+
+    <!-- PWA — installable as a Mac Dock / iPad Home Screen app, same code
+         as the web page, no App Store, no separate build. -->
+    <link rel="manifest" href="manifest.json" />
+    <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
+    <meta name="theme-color" content="#0A0A0A" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Live Board" />
     <style>
       :root {
         --bg: #0A0A0A;
@@ -112,6 +121,10 @@
       .state-dot.live { animation: pulseDot 1.6s ease-in-out infinite; }
 
       .meta-text { text-align: right; font-size: 11px; color: var(--text-muted); line-height: 1.5; }
+      /* Market-breadth summary — overall board mood at a glance, before
+         scanning individual tiles. */
+      #breadthSummary { font-size: 13px; font-weight: 700; white-space: nowrap; }
+      #breadthSummary .breadth-sep { color: var(--text-muted); font-weight: 400; margin: 0 7px; }
       #refreshBtn {
         font-size: 11px; font-family: inherit; padding: 6px 12px; border-radius: 6px;
         border: 1px solid #332F27; background: #181816; color: var(--text-secondary); cursor: pointer;
@@ -271,6 +284,7 @@
           </div>
         </div>
         <div class="header-right">
+          <span id="breadthSummary">&nbsp;</span>
           <span class="state-pill" id="statePill">&nbsp;</span>
           <div class="meta-text">
             <div id="updatedLabel">Loading&hellip;</div>
@@ -474,6 +488,14 @@
         });
       }
 
+      // Includes the date, not just the time — a TV left on overnight shows
+      // a last-successful-poll time that would otherwise be ambiguous (is
+      // 6:04 PM today's close, or still showing last night's?).
+      function formatUpdatedStamp() {
+        var d = new Date();
+        return d.toLocaleDateString([], { month: "short", day: "numeric" }) + ", " + d.toLocaleTimeString();
+      }
+
       // ---- Market state (America/New_York, no holiday calendar — a holiday
       // will show the wrong state, acceptable trade-off for a static page) ----
       function marketState() {
@@ -540,14 +562,16 @@
         document.getElementById("macroStrip").innerHTML = html;
       }
 
+      // Only flags the actionable extremes (Low/High) — "Moderate" is most
+      // tickers most days and was crowding every tile without telling you
+      // anything you'd act on. Still computed the same way, just not shown
+      // when it lands in the unremarkable middle.
       function volatilityBadge(row) {
         if (!row.atr || !row.price) return "";
         var pct = (row.atr / row.price) * 100;
-        var tier, bg, text;
-        if (pct < 2) { tier = "Low vol"; bg = "#1B1F26"; text = "#8FB8E6"; }
-        else if (pct < 4) { tier = "Moderate vol"; bg = "#231A08"; text = "#D9A441"; }
-        else { tier = "High vol"; bg = "#3A1414"; text = "#E9A6A6"; }
-        return '<span class="mini-badge" style="background:' + bg + ';color:' + text + ';">' + tier + ' (' + pct.toFixed(1) + '%)</span>';
+        if (pct < 2) return '<span class="mini-badge" style="background:#1B1F26;color:#8FB8E6;">Low vol (' + pct.toFixed(1) + '%)</span>';
+        if (pct >= 4) return '<span class="mini-badge" style="background:#3A1414;color:#E9A6A6;">High vol (' + pct.toFixed(1) + '%)</span>';
+        return "";
       }
 
       function tileBadges(row) {
@@ -616,6 +640,29 @@
           return row ? tileHtml(row) : '<div class="tile" data-symbol="' + sym + '"><div class="tile-head"><span class="tile-ticker">' + sym + '</span></div><div class="tile-error">No data</div></div>';
         }).join("");
         document.getElementById("grid").innerHTML = html;
+        renderBreadthSummary();
+      }
+
+      // Overall board mood in one line — how many tiles are on the buy side
+      // (Entry/Entry+), neutral (Watch), or the sell side (Exit/Exit+),
+      // computed from the same signal tiers as the badges themselves.
+      function renderBreadthSummary() {
+        var buy = 0, watch = 0, sell = 0;
+        TICKERS.forEach(function (sym) {
+          var row = lastData[sym];
+          if (!row || row.error) return;
+          var detailed = computeSignalDetailed(row);
+          if (!detailed) return;
+          var label = detailed.tier.label;
+          if (label === "Entry" || label === "Entry+") buy++;
+          else if (label === "Exit" || label === "Exit+") sell++;
+          else watch++;
+        });
+        var sep = '<span class="breadth-sep">·</span>';
+        document.getElementById("breadthSummary").innerHTML =
+          '<span style="color:#9FCB86;">' + buy + ' Entry</span>' + sep +
+          '<span style="color:var(--text-muted);">' + watch + ' Watch</span>' + sep +
+          '<span style="color:#E9A6A6;">' + sell + ' Exit</span>';
       }
 
       function loadData(isAuto) {
@@ -659,7 +706,7 @@
 
             render();
             renderMacroStrip();
-            document.getElementById("updatedLabel").textContent = "Updated " + new Date().toLocaleTimeString();
+            document.getElementById("updatedLabel").textContent = "Updated " + formatUpdatedStamp();
             resetCountdown();
           })
           .catch(function (err) {
@@ -962,6 +1009,16 @@
       loadData(false);
       loadFlashNews();
       setInterval(tickCountdown, 1000);
+
+      // Registers the app-shell service worker (see sw.js) so the board is
+      // installable via Mac "Add to Dock" / iPad "Add to Home Screen" —
+      // never blocks boot and fails silently (e.g. file:// previews, or a
+      // browser without SW support) since the board works fine without it.
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", function () {
+          navigator.serviceWorker.register("sw.js").catch(function () {});
+        });
+      }
     </script>
   </body>
 </html>
