@@ -88,7 +88,8 @@ const CATEGORIES = [
 // Used only by ?mode=flash (the live trading board's "market-moving news"
 // panel) — same market-focused feeds as the usStocks category above, just a
 // separate standalone response shape (flat list, not the 9-category digest)
-// and a larger item count (5, vs. 3 for a digest section).
+// and a larger item count (25, vs. 3 for a digest section) since it's a
+// continuously-scrolling ticker, not a fixed-space panel.
 const FLASH_CATEGORY = {
   key: "flash",
   label: "Market-Moving News",
@@ -97,7 +98,7 @@ const FLASH_CATEGORY = {
     { url: "https://feeds.content.dowjones.io/public/rss/mw_topstories", source: "MarketWatch" },
   ],
 };
-const FLASH_ITEMS = 5;
+const FLASH_ITEMS = 25;
 
 function corsHeaders() {
   return {
