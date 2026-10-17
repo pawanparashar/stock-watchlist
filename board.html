@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Live Board — Parashar Radar</title>
+    <link rel="icon" type="image/png" href="assets/favicon.png" />
+    <style>
+      :root {
+        --bg: #0A0A0A;
+        --tile-bg: #141412;
+        --tile-border: #2A2A26;
+        --tile-border-hover: #4A4A42;
+        --text-primary: #F5F3EE;
+        --text-secondary: #D7D5CC;
+        --text-muted: #74726A;
+        --text-faint: #5C5A53;
+      }
+      * { box-sizing: border-box; }
+      html, body {
+        margin: 0;
+        height: 100%;
+        background: var(--bg);
+        color: var(--text-primary);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+        overflow-x: hidden;
+      }
+      a { color: #D4A017; }
+      .wrap {
+        min-height: 100vh;
+        padding: 20px 28px 28px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      /* ---- Header ---- */
+      .board-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 14px;
+        padding-bottom: 14px;
+        border-bottom: 1px solid #1E1D1A;
+      }
+      .brand { display: flex; align-items: center; gap: 14px; }
+      .brand-icon {
+        width: 38px; height: 38px; border-radius: 9px;
+        background: linear-gradient(135deg,#1a1a1a,#0b0b0b);
+        border: 1px solid #2a2a2a;
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0;
+      }
+      .brand-eyebrow { font-size: 10px; letter-spacing: 2px; color: #9C6B0A; font-weight: 700; }
+      .brand-title { font-size: 20px; font-weight: 800; letter-spacing: 0.3px; color: var(--text-primary); }
+      .back-link { font-size: 11px; color: var(--text-muted); text-decoration: none; display: block; margin-top: 2px; }
+      .back-link:hover { color: var(--text-secondary); }
+
+      .header-right { display: flex; align-items: center; gap: 16px; }
+      .state-pill {
+        display: flex; align-items: center; gap: 7px;
+        padding: 6px 13px; border-radius: 18px;
+        font-size: 11px; font-weight: 700; letter-spacing: 0.5px;
+        white-space: nowrap;
+      }
+      .state-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+      @keyframes pulseDot { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+      .state-dot.live { animation: pulseDot 1.6s ease-in-out infinite; }
+
+      .meta-text { text-align: right; font-size: 11px; color: var(--text-muted); line-height: 1.5; }
+      #refreshBtn {
+        font-size: 11px; font-family: inherit; padding: 6px 12px; border-radius: 6px;
+        border: 1px solid #332F27; background: #181816; color: var(--text-secondary); cursor: pointer;
+      }
+      #refreshBtn:disabled { opacity: 0.5; cursor: default; }
+
+      /* ---- Tile grid ---- */
+      #grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 14px;
+      }
+      .tile {
+        position: relative;
+        background: var(--tile-bg);
+        border: 1px solid var(--tile-border);
+        border-radius: 12px;
+        padding: 15px 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 9px;
+        cursor: pointer;
+        transition: background 0.15s ease, border-color 0.15s ease;
+      }
+      .tile:hover { border-color: var(--tile-border-hover); background: #181816; }
+      @keyframes flashGlow {
+        0%,100% { box-shadow: 0 0 0 2px rgba(245,197,66,0.9), 0 0 22px rgba(245,197,66,0.45); }
+        50% { box-shadow: 0 0 0 2px rgba(245,197,66,0.5), 0 0 10px rgba(245,197,66,0.2); }
+      }
+      .tile.flash { animation: flashGlow 1.8s ease-in-out infinite; }
+      .just-changed {
+        position: absolute; top: -9px; right: 12px;
+        background: #F5C542; color: #221900;
+        font-size: 10px; font-weight: 800; letter-spacing: 0.5px;
+        padding: 2px 8px; border-radius: 8px;
+      }
+      .tile-head { display: flex; align-items: baseline; justify-content: space-between; }
+      .tile-ticker { font-size: 19px; font-weight: 800; color: var(--text-primary); }
+      .tile-atr { font-size: 10px; color: var(--text-muted); }
+      .tile-price-row { display: flex; align-items: baseline; gap: 9px; }
+      .tile-price { font-size: 21px; font-weight: 700; color: var(--text-primary); }
+      .tile-change { font-size: 12px; font-weight: 600; }
+      .up { color: #6FE39A; }
+      .down { color: #E08A8A; }
+      .flat { color: var(--text-muted); }
+      .signal-pill {
+        display: inline-flex; align-self: flex-start;
+        font-size: 12px; font-weight: 800; letter-spacing: 0.4px;
+        padding: 4px 13px; border-radius: 13px;
+      }
+      .gauge-meta { display: flex; justify-content: space-between; font-size: 9.5px; color: var(--text-muted); margin-bottom: 3px; }
+      .gauge-track { position: relative; height: 6px; border-radius: 3px; }
+      .gauge-marker { position: absolute; top: -3px; width: 2px; height: 12px; background: #F5C542; border-radius: 1px; }
+      .gauge-note { font-size: 9.5px; color: #9C9A92; margin-top: 3px; }
+      .badges-row { display: flex; gap: 5px; flex-wrap: wrap; }
+      .mini-badge { font-size: 9.5px; padding: 2px 7px; border-radius: 9px; white-space: nowrap; }
+      .tile-error { font-size: 12px; color: #E08A8A; padding: 10px 0; }
+
+      .board-footer { margin-top: auto; padding-top: 12px; border-top: 1px solid #1E1D1A; font-size: 10.5px; color: var(--text-faint); text-align: center; }
+
+      /* ---- Detail overlay ---- */
+      #overlay {
+        position: fixed; inset: 0; background: rgba(0,0,0,0.78);
+        display: none; align-items: center; justify-content: center;
+        padding: 28px; z-index: 50;
+      }
+      #overlay.open { display: flex; }
+      #detailPanel {
+        width: 100%; max-width: 1400px; max-height: 94vh; overflow-y: auto;
+        background: var(--bg); border: 1px solid #2A2A26; border-radius: 14px;
+        padding: 26px 32px 30px;
+      }
+      .detail-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; padding-bottom: 14px; border-bottom: 1px solid #262522; margin-bottom: 18px; }
+      .detail-id { display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; }
+      .detail-ticker { font-size: 28px; font-weight: 800; color: var(--text-primary); }
+      .detail-price { font-size: 22px; font-weight: 700; color: var(--text-primary); }
+      .detail-change { font-size: 14px; font-weight: 600; }
+      .close-btn { font-size: 12px; color: var(--text-muted); background: none; border: 1px solid #332F27; border-radius: 6px; padding: 6px 12px; cursor: pointer; font-family: inherit; }
+      .close-btn:hover { color: var(--text-secondary); }
+      .detail-cols { display: flex; gap: 22px; flex-wrap: wrap; }
+      .detail-col { flex: 1 1 480px; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+      .card { background: var(--tile-bg); border: 1px solid var(--tile-border); border-radius: 12px; padding: 16px 18px; }
+      .card-label { font-size: 10.5px; letter-spacing: 1px; color: var(--text-muted); font-weight: 700; margin-bottom: 10px; }
+      .levels-row { display: flex; gap: 26px; flex-wrap: wrap; }
+      .level-box .level-label { font-size: 9.5px; letter-spacing: 1px; color: var(--text-muted); font-weight: 700; margin-bottom: 3px; }
+      .level-box .level-value { font-size: 18px; font-weight: 700; }
+      .reason-row { display: flex; justify-content: space-between; font-size: 13px; padding: 5px 0; }
+      .reason-row.zero { opacity: 0.5; }
+      .indicator-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 9px; }
+      .indicator-cell { background: var(--tile-bg); border: 1px solid var(--tile-border); border-radius: 10px; padding: 11px 13px; }
+      .indicator-cell .ind-label { font-size: 9.5px; color: var(--text-muted); margin-bottom: 3px; }
+      .indicator-cell .ind-value { font-size: 15px; font-weight: 700; }
+      .windows-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 9px 14px; }
+      .win-cell .win-label { font-size: 9.5px; color: var(--text-muted); }
+      .win-cell .win-value { font-size: 12.5px; color: var(--text-secondary); }
+      .win-cell.touched .win-label, .win-cell.touched .win-value { color: #E8B85C; font-weight: 700; }
+      .news-headline { font-size: 14px; color: var(--text-primary); line-height: 1.4; margin-bottom: 4px; }
+      .news-meta { font-size: 11px; color: var(--text-muted); }
+      .detail-footer { font-size: 11px; color: var(--text-faint); text-align: center; margin-top: 16px; }
+      .sparkline { display: block; width: 100%; height: auto; }
+      .chart-label { font-size: 10px; fill: var(--text-muted); }
+
+      .empty-state { text-align: center; color: var(--text-muted); font-size: 13px; padding: 60px 0; grid-column: 1 / -1; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="board-header">
+        <div class="brand">
+          <div class="brand-icon">
+            <svg width="22" height="22" viewBox="0 0 100 100" aria-hidden="true">
+              <polyline points="18,66 34,54 46,60 62,34 72,42" fill="none" stroke="#F5C542" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"></polyline>
+              <polyline points="62,34 78,16" fill="none" stroke="#F5C542" stroke-width="7" stroke-linecap="round"></polyline>
+            </svg>
+          </div>
+          <div>
+            <div class="brand-eyebrow">PARASHAR RADAR</div>
+            <div class="brand-title">Live Swing Board</div>
+            <a class="back-link" href="index.html">&larr; Back to watchlist</a>
+          </div>
+        </div>
+        <div class="header-right">
+          <span class="state-pill" id="statePill">&nbsp;</span>
+          <div class="meta-text">
+            <div id="updatedLabel">Loading&hellip;</div>
+            <div id="countdownLabel">&nbsp;</div>
+          </div>
+          <button id="refreshBtn">Refresh</button>
+        </div>
+      </div>
+
+      <div id="grid">
+        <div class="empty-state">Loading board&hellip;</div>
+      </div>
+
+      <div class="board-footer">
+        Tap a tile for the full breakdown &middot; refreshes automatically every 5 minutes &middot; gold glow = signal changed since last poll
+      </div>
+    </div>
+
+    <div id="overlay">
+      <div id="detailPanel"></div>
+    </div>
+
+    <script>
+      // ---- Configuration ----
+      var TICKERS = ["TSLA","SPCX","GOOGL","META","MSFT","NVDA","AMZN","AAPL","AMD","IREN"];
+      var WORKER_URL = "https://stock-watchlist-proxy.pawan227.workers.dev/";
+      var REFRESH_MS = 5 * 60 * 1000;
+      var COLS = ["7d","15d","30d","90d","180d","365d"];
+      var STOP_ATR_MULT = 2;
+
+      // ---- Signal scoring — identical math to index.html's computeSignal,
+      // just also returning the reason-by-reason breakdown for the detail
+      // overlay's "why this signal" card, so the two pages can never disagree. ----
+      var SIGNAL_TIERS = [
+        { min: 5,           label: "Entry+",  bg: "#1B3A12", text: "#B7DDAC", border: "#2F5E1D" },
+        { min: 2,           label: "Entry",   bg: "#16240D", text: "#9FCB86", border: "#2A4A18" },
+        { min: -1,          label: "Watch",   bg: "#221F1A", text: "#B9B7AE", border: "#332F27" },
+        { min: -4,          label: "Exit",    bg: "#3A1414", text: "#E9A6A6", border: "#5E2020" },
+        { min: -Infinity,   label: "Exit+",   bg: "#4A0A0A", text: "#FF8F8F", border: "#6E1414" }
+      ];
+      var LOW_BREAK_VOTE = { "7d": 1, "15d": 1, "30d": 2, "90d": 2, "180d": 3, "365d": 3 };
+      var HIGH_BREAK_VOTE = { "7d": -1, "15d": -1, "30d": -2, "90d": -2, "180d": -3, "365d": -3 };
+
+      function deepestOf(row) {
+        var deepest = null;
+        for (var i = 0; i < COLS.length; i++) {
+          var c = COLS[i], w = row.windows ? row.windows[c] : null;
+          if (w && row.price < w.low) deepest = c;
+        }
+        return deepest;
+      }
+      function deepestHighOf(row) {
+        var deepest = null;
+        for (var i = 0; i < COLS.length; i++) {
+          var c = COLS[i], w = row.windows ? row.windows[c] : null;
+          if (w && row.price > w.high) deepest = c;
+        }
+        return deepest;
+      }
+
+      function computeSignalDetailed(row) {
+        if (row.error) return null;
+        var score = 0;
+        var reasons = [];
+
+        var deepest = deepestOf(row);
+        if (deepest) {
+          var dv = LOW_BREAK_VOTE[deepest];
+          score += dv;
+          reasons.push({ text: "Below " + deepest + " low", delta: dv });
+        } else {
+          var deepestHigh = deepestHighOf(row);
+          if (deepestHigh) {
+            var hv = HIGH_BREAK_VOTE[deepestHigh];
+            score += hv;
+            reasons.push({ text: "Above " + deepestHigh + " high", delta: hv });
+          }
+        }
+
+        if (row.rsi !== null && row.rsi !== undefined) {
+          if (row.rsi <= 30) { score += 1; reasons.push({ text: "RSI " + row.rsi + " oversold (≤30)", delta: 1 }); }
+          else if (row.rsi >= 70) { score -= 1; reasons.push({ text: "RSI " + row.rsi + " overbought (≥70)", delta: -1 }); }
+        }
+        if (row.stochastic) {
+          if (row.stochastic.oversold) { score += 1; reasons.push({ text: "Stochastic " + row.stochastic.k + " oversold", delta: 1 }); }
+          else if (row.stochastic.overbought) { score -= 1; reasons.push({ text: "Stochastic " + row.stochastic.k + " overbought", delta: -1 }); }
+        }
+        if (row.bbands && row.bbands.breach === "lower") { score += 1; reasons.push({ text: "Price below lower Bollinger Band", delta: 1 }); }
+        else if (row.bbands && row.bbands.breach === "upper") { score -= 1; reasons.push({ text: "Price above upper Bollinger Band", delta: -1 }); }
+
+        var trendClusterSum = 0;
+        if (row.trend === "up") trendClusterSum += 1; else if (row.trend === "down") trendClusterSum -= 1;
+        if (row.macd) trendClusterSum += row.macd.bullish ? 1 : -1;
+        if (row.supertrend) trendClusterSum += row.supertrend.direction === "up" ? 1 : -1;
+        var trendClusterVote = trendClusterSum > 0 ? 1 : (trendClusterSum < 0 ? -1 : 0);
+
+        var adxMultiplier = 1, adxNote = "";
+        if (row.adx) {
+          if (row.adx.strong) { adxMultiplier = 2; adxNote = " (strong trend, ADX " + row.adx.value + " doubles it)"; }
+          else if (row.adx.value < 20) { adxMultiplier = 0; adxNote = " (weak trend, ADX " + row.adx.value + " < 20, zeroed out)"; }
+        }
+        var trendDelta = trendClusterVote * adxMultiplier;
+        score += trendDelta;
+        if (trendDelta !== 0) {
+          reasons.push({ text: "Trend/MACD/Supertrend cluster " + (trendClusterVote > 0 ? "bullish" : "bearish") + adxNote, delta: trendDelta });
+        } else if (trendClusterSum !== 0 || row.adx) {
+          reasons.push({ text: "Trend/MACD/Supertrend cluster mixed or neutral" + adxNote, delta: 0 });
+        }
+
+        var tier = SIGNAL_TIERS[SIGNAL_TIERS.length - 1];
+        for (var i = 0; i < SIGNAL_TIERS.length; i++) {
+          if (score >= SIGNAL_TIERS[i].min) { tier = SIGNAL_TIERS[i]; break; }
+        }
+        return { tier: tier, score: score, reasons: reasons };
+      }
+
+      function computeSizing(row) {
+        if (!row.atr || row.atr <= 0 || !row.price) return null;
+        var stopPrice = row.price - STOP_ATR_MULT * row.atr;
+        if (stopPrice <= 0) return null;
+        return { buyPrice: row.price, stopPrice: stopPrice };
+      }
+      function computeTarget(row, buyPrice) {
+        for (var i = 0; i < COLS.length; i++) {
+          var w = row.windows ? row.windows[COLS[i]] : null;
+          if (w && w.high > buyPrice) return w.high;
+        }
+        var fallbackRisk = (row.atr || 0) * STOP_ATR_MULT;
+        return buyPrice + 2 * fallbackRisk;
+      }
+      function computeExitLevels(row) {
+        if (!row.supertrend || !row.price) return null;
+        return { sellPrice: row.price, trailPrice: row.supertrend.value };
+      }
+
+      // Gauge bounds shown on each tile — stop/target for an Entry-tier signal,
+      // trail-stop/nearest-high for an Exit-tier one, else the 30d range as a
+      // neutral reference for Watch.
+      function computeGaugeBounds(row, tier) {
+        if (!row.price) return null;
+        if (tier.label === "Entry" || tier.label === "Entry+") {
+          var sizing = computeSizing(row);
+          if (!sizing) return null;
+          return { leftLabel: "Stop", left: sizing.stopPrice, rightLabel: "Target", right: computeTarget(row, sizing.buyPrice) };
+        }
+        if (tier.label === "Exit" || tier.label === "Exit+") {
+          var exitL = computeExitLevels(row);
+          if (!exitL) return null;
+          var rightVal = null, rightLabel = "+2%";
+          for (var i = 0; i < COLS.length; i++) {
+            var w = row.windows ? row.windows[COLS[i]] : null;
+            if (w && w.high > row.price) { rightVal = w.high; rightLabel = COLS[i] + " high"; break; }
+          }
+          if (rightVal === null) rightVal = row.price * 1.02;
+          return { leftLabel: "Trail stop", left: exitL.trailPrice, rightLabel: rightLabel, right: rightVal };
+        }
+        var w30 = row.windows ? row.windows["30d"] : null;
+        if (!w30) return null;
+        return { leftLabel: "30d low", left: w30.low, rightLabel: "30d high", right: w30.high };
+      }
+
+      function fmt(n) {
+        if (n === null || n === undefined || isNaN(n)) return "—";
+        return "$" + n.toFixed(2);
+      }
+      function escapeHtml(str) {
+        return String(str || "").replace(/[&<>"']/g, function (c) {
+          return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+        });
+      }
+
+      // ---- Market state (America/New_York, no holiday calendar — a holiday
+      // will show the wrong state, acceptable trade-off for a static page) ----
+      function marketState() {
+        var parts = new Intl.DateTimeFormat("en-US", {
+          timeZone: "America/New_York", weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false
+        }).formatToParts(new Date());
+        var map = {};
+        parts.forEach(function (p) { map[p.type] = p.value; });
+        var weekday = map.weekday;
+        var minutes = parseInt(map.hour, 10) * 60 + parseInt(map.minute, 10);
+        if (weekday === "Sat" || weekday === "Sun") return { key: "closed", label: "CLOSED" };
+        if (minutes >= 240 && minutes < 570) return { key: "pre", label: "PRE-MARKET" };
+        if (minutes >= 570 && minutes < 960) return { key: "regular", label: "REGULAR HOURS" };
+        if (minutes >= 960 && minutes < 1200) return { key: "after", label: "AFTER-HOURS" };
+        return { key: "closed", label: "CLOSED" };
+      }
+      var STATE_STYLE = {
+        pre:     { dot: "#D9A441", bg: "rgba(217,164,65,0.12)", border: "rgba(217,164,65,0.4)", text: "#E8B85C", live: false },
+        regular: { dot: "#3FCB6B", bg: "rgba(60,180,100,0.12)", border: "rgba(60,180,100,0.4)", text: "#6FE39A", live: true },
+        after:   { dot: "#9A8FE8", bg: "rgba(130,120,230,0.14)", border: "rgba(130,120,230,0.4)", text: "#B6AEF0", live: false },
+        closed:  { dot: "#8C8C87", bg: "rgba(140,140,135,0.12)", border: "rgba(140,140,135,0.35)", text: "#B9B7AE", live: false }
+      };
+      function renderStatePill() {
+        var state = marketState();
+        var s = STATE_STYLE[state.key];
+        document.getElementById("statePill").style.background = s.bg;
+        document.getElementById("statePill").style.border = "1px solid " + s.border;
+        document.getElementById("statePill").innerHTML =
+          '<span class="state-dot' + (s.live ? ' live' : '') + '" style="background:' + s.dot + ';"></span>' +
+          '<span style="color:' + s.text + ';">' + state.label + '</span>';
+        return state;
+      }
+
+      // ---- Data + render ----
+      var lastData = {};        // symbol -> row
+      var prevSignals = {};     // symbol -> tier label, from the previous successful poll
+      var changedSymbols = {};  // symbol -> true, cleared each render cycle
+      var countdownSeconds = REFRESH_MS / 1000;
+      var countdownTimer = null;
+
+      function volatilityBadge(row) {
+        if (!row.atr || !row.price) return "";
+        var pct = (row.atr / row.price) * 100;
+        var tier, bg, text;
+        if (pct < 2) { tier = "Low vol"; bg = "#1B1F26"; text = "#8FB8E6"; }
+        else if (pct < 4) { tier = "Moderate vol"; bg = "#231A08"; text = "#D9A441"; }
+        else { tier = "High vol"; bg = "#3A1414"; text = "#E9A6A6"; }
+        return '<span class="mini-badge" style="background:' + bg + ';color:' + text + ';">' + tier + ' (' + pct.toFixed(1) + '%)</span>';
+      }
+
+      function tileBadges(row) {
+        var badges = [];
+        if (row.trend === "up") badges.push(['Uptrend', "#1B2A14", "#9FCB86"]);
+        else if (row.trend === "down") badges.push(['Downtrend', "#3A1414", "#E9A6A6"]);
+        if (row.rsi !== null && row.rsi !== undefined) {
+          if (row.rsi <= 30) badges.push(['RSI ' + row.rsi + ' oversold', "#1B2A14", "#9FCB86"]);
+          else if (row.rsi >= 70) badges.push(['RSI ' + row.rsi + ' overbought', "#3A1414", "#E9A6A6"]);
+          else badges.push(['RSI ' + row.rsi, "#221F1A", "#B9B7AE"]);
+        }
+        if (row.relVol && row.relVol >= 1.5) badges.push([row.relVol.toFixed(1) + 'x volume', "#231A08", "#D9A441"]);
+        if (row.adx) {
+          if (row.adx.strong) badges.push(['Strong trend (ADX ' + row.adx.value + ')', "#221F1A", "#B9B7AE"]);
+          else if (row.adx.value < 20) badges.push(['Weak trend (ADX ' + row.adx.value + ')', "#221F1A", "#B9B7AE"]);
+        }
+        return badges.slice(0, 3).map(function (b) {
+          return '<span class="mini-badge" style="background:' + b[1] + ';color:' + b[2] + ';">' + escapeHtml(b[0]) + '</span>';
+        }).join("");
+      }
+
+      function tileHtml(row) {
+        if (row.error) {
+          return '<div class="tile" data-symbol="' + row.symbol + '">' +
+            '<div class="tile-head"><span class="tile-ticker">' + row.symbol + '</span></div>' +
+            '<div class="tile-error">' + escapeHtml(row.error) + '</div>' +
+          '</div>';
+        }
+
+        var detailed = computeSignalDetailed(row);
+        var tier = detailed ? detailed.tier : SIGNAL_TIERS[2];
+        var prevClose = row.sparkline && row.sparkline.length > 1 ? row.sparkline[row.sparkline.length - 2].c : null;
+        var changePct = prevClose ? ((row.price - prevClose) / prevClose) * 100 : null;
+        var changeClass = changePct === null ? "flat" : (changePct > 0 ? "up" : (changePct < 0 ? "down" : "flat"));
+        var changeText = changePct === null ? "—" : (changePct >= 0 ? "+" : "") + changePct.toFixed(1) + "%";
+
+        var gauge = computeGaugeBounds(row, tier);
+        var gaugeHtml = "";
+        if (gauge && gauge.right > gauge.left) {
+          var pos = Math.max(0, Math.min(100, ((row.price - gauge.left) / (gauge.right - gauge.left)) * 100));
+          gaugeHtml =
+            '<div>' +
+              '<div class="gauge-meta"><span>' + gauge.leftLabel + ' ' + fmt(gauge.left) + '</span><span>' + gauge.rightLabel + ' ' + fmt(gauge.right) + '</span></div>' +
+              '<div class="gauge-track" style="background:linear-gradient(90deg, #3A1414, #16240D);">' +
+                '<div class="gauge-marker" style="left:' + pos.toFixed(1) + '%;"></div>' +
+              '</div>' +
+            '</div>';
+        }
+
+        var flashClass = changedSymbols[row.symbol] ? " flash" : "";
+        return (
+          '<div class="tile' + flashClass + '" data-symbol="' + row.symbol + '" onclick="openDetail(\'' + row.symbol + '\')">' +
+            (changedSymbols[row.symbol] ? '<div class="just-changed">JUST CHANGED</div>' : '') +
+            '<div class="tile-head"><span class="tile-ticker">' + row.symbol + '</span><span class="tile-atr">ATR ' + (row.atr !== null && row.atr !== undefined ? row.atr.toFixed(2) : '—') + '</span></div>' +
+            '<div class="tile-price-row"><span class="tile-price">' + fmt(row.price) + '</span><span class="tile-change ' + changeClass + '">' + changeText + '</span></div>' +
+            '<div class="signal-pill" style="background:' + tier.bg + ';color:' + tier.text + ';border:1px solid ' + tier.border + ';">' + tier.label + '</div>' +
+            gaugeHtml +
+            '<div class="badges-row">' + tileBadges(row) + volatilityBadge(row) + '</div>' +
+          '</div>'
+        );
+      }
+
+      function render() {
+        var html = TICKERS.map(function (sym) {
+          var row = lastData[sym];
+          return row ? tileHtml(row) : '<div class="tile" data-symbol="' + sym + '"><div class="tile-head"><span class="tile-ticker">' + sym + '</span></div><div class="tile-error">No data</div></div>';
+        }).join("");
+        document.getElementById("grid").innerHTML = html;
+      }
+
+      function loadData(isAuto) {
+        var btn = document.getElementById("refreshBtn");
+        btn.disabled = true;
+
+        var url = WORKER_URL + "?symbols=" + encodeURIComponent(TICKERS.join(","));
+        fetch(url)
+          .then(function (res) {
+            if (!res.ok) throw new Error("Request failed: " + res.status);
+            return res.json();
+          })
+          .then(function (json) {
+            if (json.error) throw new Error(json.error);
+            var rows = json.data || [];
+
+            // Diff against the previous poll's signals before overwriting
+            // lastData, so a tile flashes exactly once for the poll where
+            // its signal actually changed.
+            changedSymbols = {};
+            rows.forEach(function (row) {
+              if (row.error) return;
+              var detailed = computeSignalDetailed(row);
+              var label = detailed ? detailed.tier.label : null;
+              if (label && prevSignals[row.symbol] && prevSignals[row.symbol] !== label) {
+                changedSymbols[row.symbol] = true;
+              }
+              if (label) prevSignals[row.symbol] = label;
+            });
+
+            lastData = {};
+            rows.forEach(function (row) { lastData[row.symbol] = row; });
+
+            render();
+            document.getElementById("updatedLabel").textContent = "Updated " + new Date().toLocaleTimeString();
+            resetCountdown();
+          })
+          .catch(function (err) {
+            // Keep showing the last good render — a blank board on a TV is
+            // worse than slightly stale data with an honest error note.
+            document.getElementById("updatedLabel").textContent =
+              "Could not refresh (" + err.message + ") — showing last good data";
+            resetCountdown();
+          })
+          .finally(function () {
+            btn.disabled = false;
+          });
+      }
+
+      function resetCountdown() {
+        countdownSeconds = REFRESH_MS / 1000;
+      }
+
+      function tickCountdown() {
+        countdownSeconds -= 1;
+        if (countdownSeconds <= 0) {
+          loadData(true);
+          return;
+        }
+        var m = Math.floor(countdownSeconds / 60), s = Math.floor(countdownSeconds % 60);
+        document.getElementById("countdownLabel").textContent = "Next refresh in " + m + ":" + (s < 10 ? "0" : "") + s;
+        renderStatePill();
+      }
+
+      document.getElementById("refreshBtn").addEventListener("click", function () { loadData(false); });
+
+      // ---- Detail overlay ----
+      function sparklineSvg(row, tier) {
+        var points = row.sparkline;
+        if (!points || points.length < 2) return "";
+        var closes = points.map(function (p) { return p.c; });
+        var w = 760, h = 220, padL = 50, padR = 10, padT = 14, padB = 20;
+        var plotW = w - padL - padR, plotH = h - padT - padB;
+
+        var min = Math.min.apply(null, closes), max = Math.max.apply(null, closes);
+        var sizing = (tier.label === "Entry" || tier.label === "Entry+") ? computeSizing(row) : null;
+        if (sizing) { min = Math.min(min, sizing.stopPrice); max = Math.max(max, sizing.buyPrice); }
+        var exitL = (tier.label === "Exit" || tier.label === "Exit+") ? computeExitLevels(row) : null;
+        if (exitL) { min = Math.min(min, exitL.trailPrice); max = Math.max(max, exitL.trailPrice); }
+        var span = (max - min) || 1, pad = span * 0.06;
+        min -= pad; max += pad; span = max - min;
+
+        function x(i) { return padL + (i / (closes.length - 1)) * plotW; }
+        function y(v) { return padT + (1 - (v - min) / span) * plotH; }
+
+        var svg = '<svg class="sparkline" viewBox="0 0 ' + w + ' ' + h + '">';
+        [max - pad, (max + min) / 2, min + pad].forEach(function (p) {
+          var yy = y(p).toFixed(1);
+          svg += '<line x1="' + padL + '" y1="' + yy + '" x2="' + (w - padR) + '" y2="' + yy + '" stroke="#201F1C" stroke-width="1"/>';
+          svg += '<text x="' + (padL - 6) + '" y="' + (parseFloat(yy) + 3) + '" text-anchor="end" class="chart-label">' + fmt(p) + '</text>';
+        });
+        if (sizing) {
+          var stopY = y(sizing.stopPrice).toFixed(1);
+          svg += '<line x1="' + padL + '" y1="' + stopY + '" x2="' + (w - padR) + '" y2="' + stopY + '" stroke="#E9A6A6" stroke-width="1" stroke-dasharray="4 3"/>';
+          svg += '<text x="' + (w - padR - 4) + '" y="' + (parseFloat(stopY) - 4) + '" text-anchor="end" class="chart-label" style="fill:#E9A6A6">stop ' + fmt(sizing.stopPrice) + '</text>';
+        }
+        if (exitL) {
+          var trailY = y(exitL.trailPrice).toFixed(1);
+          svg += '<line x1="' + padL + '" y1="' + trailY + '" x2="' + (w - padR) + '" y2="' + trailY + '" stroke="#D9A441" stroke-dasharray="4 3" stroke-width="1"/>';
+          svg += '<text x="' + (w - padR - 4) + '" y="' + (parseFloat(trailY) - 4) + '" text-anchor="end" class="chart-label" style="fill:#D9A441">trail stop ' + fmt(exitL.trailPrice) + '</text>';
+        }
+        var lineColor = closes[closes.length - 1] >= closes[0] ? "#6FE39A" : "#E08A8A";
+        var linePoints = closes.map(function (v, i) { return x(i).toFixed(1) + "," + y(v).toFixed(1); }).join(" ");
+        svg += '<polyline points="' + linePoints + '" fill="none" stroke="' + lineColor + '" stroke-width="2"/>';
+        svg += '</svg>';
+        return svg;
+      }
+
+      function windowsGridHtml(row) {
+        return COLS.map(function (c) {
+          var w = row.windows ? row.windows[c] : null;
+          if (!w) return '<div class="win-cell"><div class="win-label">' + c + '</div><div class="win-value">insufficient history</div></div>';
+          var touched = row.price < w.low || row.price > w.high;
+          return '<div class="win-cell' + (touched ? ' touched' : '') + '"><div class="win-label">' + c + (touched ? ' — touched' : '') + '</div><div class="win-value">' + fmt(w.low) + ' / ' + fmt(w.high) + '</div></div>';
+        }).join("");
+      }
+
+      function indicatorGridHtml(row) {
+        var cells = [];
+        cells.push(['RSI (14)', row.rsi !== null && row.rsi !== undefined ? row.rsi : '—']);
+        cells.push(['Stochastic %K', row.stochastic ? row.stochastic.k : '—']);
+        cells.push(['MACD', row.macd ? (row.macd.bullish ? 'Bullish' : 'Bearish') : '—']);
+        cells.push(['ADX (14)', row.adx ? row.adx.value + (row.adx.strong ? ' · Strong trend' : '') : '—']);
+        cells.push(['Supertrend (10,3)', row.supertrend ? (row.supertrend.direction === 'up' ? '▲ ' : '▼ ') + fmt(row.supertrend.value) : '—']);
+        cells.push(['Bollinger (20,2)', row.bbands ? (row.bbands.breach === 'lower' ? 'Below lower band' : row.bbands.breach === 'upper' ? 'Above upper band' : 'Inside bands') : '—']);
+        cells.push(['vs SMA 200', row.sma200 ? (row.sma200.above ? '+' : '') + row.sma200.pct + '% ' + (row.sma200.above ? 'above' : 'below') : '—']);
+        cells.push(['Volume vs 20d avg', row.relVol ? row.relVol.toFixed(1) + '×' : '—']);
+        return cells.map(function (c) {
+          return '<div class="indicator-cell"><div class="ind-label">' + c[0] + '</div><div class="ind-value">' + c[1] + '</div></div>';
+        }).join("");
+      }
+
+      function levelsRowHtml(row, tier) {
+        if (tier.label === "Entry" || tier.label === "Entry+") {
+          var sizing = computeSizing(row);
+          if (!sizing) return "";
+          var target = computeTarget(row, sizing.buyPrice);
+          var risk = sizing.buyPrice - sizing.stopPrice, reward = target - sizing.buyPrice;
+          var rr = (risk > 0 && reward > 0) ? "1 : " + (reward / risk).toFixed(1) : "—";
+          return (
+            '<div class="levels-row">' +
+              '<div class="level-box"><div class="level-label">BUY</div><div class="level-value" style="color:var(--text-primary)">' + fmt(sizing.buyPrice) + '</div></div>' +
+              '<div class="level-box"><div class="level-label">STOP (2× ATR)</div><div class="level-value" style="color:#E9A6A6">' + fmt(sizing.stopPrice) + '</div></div>' +
+              '<div class="level-box"><div class="level-label">TARGET</div><div class="level-value" style="color:#9FCB86">' + fmt(target) + '</div></div>' +
+              '<div class="level-box"><div class="level-label">RISK : REWARD</div><div class="level-value" style="color:var(--text-primary)">' + rr + '</div></div>' +
+            '</div>'
+          );
+        }
+        if (tier.label === "Exit" || tier.label === "Exit+") {
+          var exitL = computeExitLevels(row);
+          if (!exitL) return "";
+          return (
+            '<div class="levels-row">' +
+              '<div class="level-box"><div class="level-label">SELL</div><div class="level-value" style="color:var(--text-primary)">' + fmt(exitL.sellPrice) + '</div></div>' +
+              '<div class="level-box"><div class="level-label">TRAIL STOP</div><div class="level-value" style="color:#D9A441">' + fmt(exitL.trailPrice) + '</div></div>' +
+            '</div>'
+          );
+        }
+        return "";
+      }
+
+      function reasonsHtml(detailed) {
+        if (!detailed || !detailed.reasons.length) return '<div class="reason-row zero"><span>No individual badge is driving this — everything is reading neutral</span><span>0</span></div>';
+        return detailed.reasons.map(function (r) {
+          var color = r.delta > 0 ? "#9FCB86" : (r.delta < 0 ? "#E9A6A6" : "#9C9A92");
+          return '<div class="reason-row' + (r.delta === 0 ? ' zero' : '') + '"><span style="color:#D7D5CC;">' + escapeHtml(r.text) + '</span><span style="color:' + color + ';font-weight:700;">' + (r.delta > 0 ? '+' : '') + r.delta + '</span></div>';
+        }).join("");
+      }
+
+      var overlayAutoCloseTimer = null;
+      function openDetail(symbol) {
+        var row = lastData[symbol];
+        if (!row || row.error) return;
+        var detailed = computeSignalDetailed(row);
+        var tier = detailed.tier;
+        var prevClose = row.sparkline && row.sparkline.length > 1 ? row.sparkline[row.sparkline.length - 2].c : null;
+        var changePct = prevClose ? ((row.price - prevClose) / prevClose) * 100 : null;
+        var changeClass = changePct === null ? "flat" : (changePct > 0 ? "up" : (changePct < 0 ? "down" : "flat"));
+        var changeText = changePct === null ? "" : (changePct >= 0 ? "+" : "") + changePct.toFixed(1) + "% today";
+
+        var newsHtml = row.news && row.news.latestHeadline
+          ? '<div class="news-headline"><a href="' + escapeHtml(row.news.latestUrl) + '" target="_blank" rel="noopener noreferrer" style="color:inherit;">' + escapeHtml(row.news.latestHeadline) + '</a></div>' +
+            '<div class="news-meta">' + escapeHtml(row.news.latestSource || "") + ' · ' + (row.news.latestAt ? new Date(row.news.latestAt).toLocaleString() : "") + '</div>'
+          : '<div class="news-meta">No recent news for this symbol.</div>';
+
+        document.getElementById("detailPanel").innerHTML =
+          '<div class="detail-head">' +
+            '<div class="detail-id">' +
+              '<span class="detail-ticker">' + symbol + '</span>' +
+              '<span class="detail-price">' + fmt(row.price) + '</span>' +
+              (changeText ? '<span class="detail-change ' + changeClass + '">' + changeText + '</span>' : '') +
+              '<span class="signal-pill" style="background:' + tier.bg + ';color:' + tier.text + ';border:1px solid ' + tier.border + ';">' + tier.label + '</span>' +
+            '</div>' +
+            '<button class="close-btn" onclick="closeDetail()">Close ✕</button>' +
+          '</div>' +
+          '<div class="detail-cols">' +
+            '<div class="detail-col">' +
+              '<div class="card"><div class="card-label">60-DAY CLOSE</div>' + sparklineSvg(row, tier) + '</div>' +
+              (levelsRowHtml(row, tier) ? '<div class="card">' + levelsRowHtml(row, tier) + '</div>' : '') +
+              '<div class="card"><div class="card-label">WHY ' + tier.label.toUpperCase() + ' · SCORE ' + (detailed.score >= 0 ? '+' : '') + detailed.score + '</div>' + reasonsHtml(detailed) + '</div>' +
+            '</div>' +
+            '<div class="detail-col">' +
+              '<div class="indicator-grid">' + indicatorGridHtml(row) + '</div>' +
+              '<div class="card"><div class="card-label">WINDOW LOW / HIGH</div><div class="windows-grid">' + windowsGridHtml(row) + '</div></div>' +
+              '<div class="card"><div class="card-label">LATEST NEWS</div>' + newsHtml + '</div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="detail-footer">Closes automatically in a few seconds, or tap outside / press Esc</div>';
+
+        document.getElementById("overlay").classList.add("open");
+        clearTimeout(overlayAutoCloseTimer);
+        overlayAutoCloseTimer = setTimeout(closeDetail, 20000);
+      }
+      function closeDetail() {
+        document.getElementById("overlay").classList.remove("open");
+        clearTimeout(overlayAutoCloseTimer);
+      }
+      document.getElementById("overlay").addEventListener("click", function (e) {
+        if (e.target.id === "overlay") closeDetail();
+      });
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape") closeDetail();
+      });
+
+      // ---- Boot ----
+      renderStatePill();
+      loadData(false);
+      setInterval(tickCountdown, 1000);
+    </script>
+  </body>
+</html>
