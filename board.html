@@ -22,17 +22,44 @@
         --text-faint: #9D9B93;
       }
       * { box-sizing: border-box; }
-      html, body {
+      html { margin: 0; height: 100%; }
+      body {
         margin: 0;
-        height: 100%;
+        height: 100vh;
+        overflow: hidden;
         background: var(--bg);
         color: var(--text-primary);
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-        overflow-x: hidden;
+        display: flex;
+        flex-direction: column;
       }
       a { color: #D4A017; }
+
+      /* ---- News ticker — full-bleed scrolling strip at the very top of the
+         screen, text-only (headline + source, no image/summary). Replaces an
+         earlier right-side news panel that ate too much width from the tile
+         grid; this costs one thin row instead. Content is duplicated once in
+         the track so the loop wraps seamlessly at -50% translateX. ---- */
+      .news-ticker {
+        flex-shrink: 0;
+        background: var(--tile-bg);
+        border-bottom: 1px solid var(--tile-border);
+        overflow: hidden;
+        white-space: nowrap;
+        padding: 9px 0;
+      }
+      .news-ticker-track { display: inline-flex; width: max-content; animation: tickerScroll 50s linear infinite; }
+      .news-ticker-track:hover { animation-play-state: paused; }
+      @keyframes tickerScroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+      .news-ticker-item { display: inline-flex; align-items: baseline; white-space: nowrap; padding: 0 22px; font-size: 13.5px; }
+      .news-ticker-item a { color: var(--text-secondary); text-decoration: none; }
+      .news-ticker-item a:hover { color: var(--text-primary); }
+      .news-ticker-source { color: var(--text-muted); margin-left: 8px; font-size: 11.5px; }
+      .news-ticker-sep { color: var(--text-muted); padding: 0 0 0 22px; }
+
       .wrap {
-        height: 100vh;
+        flex: 1;
+        min-height: 0;
         overflow: hidden;
         padding: 20px 28px 20px;
         display: flex;
@@ -104,10 +131,6 @@
       .macro-price { font-size: 16px; font-weight: 700; color: var(--text-primary); }
       .macro-change { font-size: 12.5px; font-weight: 700; }
 
-      /* ---- Grid + news side-by-side row, filling all remaining height
-         below the macro strip (and above the footer) with no dead space. ---- */
-      .main-row { flex: 1; min-height: 0; display: flex; gap: 14px; }
-
       /* ---- Tile grid ---- */
       /* Fixed 5x2 for the board's actual use case (10 tickers on a TV at a
          known wide aspect ratio) so tiles stretch to fill the full height
@@ -116,7 +139,7 @@
          at narrow widths (a laptop browser testing this page). */
       #grid {
         flex: 1;
-        min-width: 0;
+        min-height: 0;
         display: grid;
         grid-template-columns: repeat(5, minmax(0, 1fr));
         grid-template-rows: repeat(2, 1fr);
@@ -124,49 +147,7 @@
       }
       @media (max-width: 1100px) {
         #grid { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); grid-template-rows: none; }
-        .main-row { flex-direction: column; }
       }
-
-      /* ---- Flash news sidebar — 5 market-moving items, fills the same
-         height as the grid beside it (not a scrolling list). ---- */
-      .flash-news {
-        width: 320px;
-        flex-shrink: 0;
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-      }
-      @media (max-width: 1100px) { .flash-news { width: 100%; } }
-      .flash-item {
-        flex: 1;
-        min-height: 0;
-        display: flex;
-        gap: 10px;
-        background: var(--tile-bg);
-        border: 1px solid var(--tile-border);
-        border-radius: 10px;
-        padding: 10px;
-        text-decoration: none;
-        color: inherit;
-        overflow: hidden;
-        transition: background 0.15s ease, border-color 0.15s ease;
-      }
-      .flash-item:hover { border-color: var(--tile-border-hover); background: #181816; }
-      .flash-thumb { width: 64px; flex-shrink: 0; border-radius: 6px; object-fit: cover; background: #221F1A; }
-      .flash-thumb-fallback {
-        width: 64px; flex-shrink: 0; border-radius: 6px; background: #221F1A;
-        display: flex; align-items: center; justify-content: center; font-size: 20px;
-      }
-      .flash-body { min-width: 0; display: flex; flex-direction: column; gap: 3px; justify-content: center; }
-      .flash-headline {
-        font-size: 12.5px; font-weight: 600; line-height: 1.3; color: var(--text-primary);
-        display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
-      }
-      .flash-summary {
-        font-size: 11px; line-height: 1.3; color: var(--text-secondary);
-        display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
-      }
-      .flash-meta { font-size: 10px; color: var(--text-muted); }
 
       .tile {
         position: relative;
@@ -264,6 +245,8 @@
     </style>
   </head>
   <body>
+    <div class="news-ticker" id="newsTicker"></div>
+
     <div class="wrap">
       <div class="board-header">
         <div class="brand">
@@ -291,11 +274,8 @@
 
       <div class="macro-strip" id="macroStrip"></div>
 
-      <div class="main-row">
-        <div id="grid">
-          <div class="empty-state">Loading board&hellip;</div>
-        </div>
-        <div class="flash-news" id="flashNews"></div>
+      <div id="grid">
+        <div class="empty-state">Loading board&hellip;</div>
       </div>
 
       <div class="board-footer">
@@ -914,43 +894,37 @@
         if (e.key === "Escape") closeDetail();
       });
 
-      // ---- Flash news — "market-moving news" sidebar, 5 items with image +
-      // summary where the source feed has them. Separate worker (and its own
-      // failure mode) from the price data: a news fetch failing shouldn't
-      // blank the sidebar if it has last-good content, and shouldn't affect
-      // the price tiles at all. Refreshed on the same cadence as the price
-      // data (called alongside loadData below) rather than its own timer.
+      // ---- Flash news — "market-moving news" ticker at the top of the
+      // screen, text-only (headline + source, no image/summary — those
+      // belong on news.html, not a strip you only glance at). Separate
+      // worker (and its own failure mode) from the price data: a news fetch
+      // failing shouldn't blank the ticker if it has last-good content, and
+      // shouldn't affect the price tiles at all. Refreshed on the same
+      // cadence as the price data (called alongside loadData below) rather
+      // than its own timer.
       var NEWS_WORKER_URL = "https://news-digest-proxy.pawan227.workers.dev/";
       var lastFlashItems = null;
 
-      function flashItemHtml(item) {
-        var thumb = item.image
-          ? '<img class="flash-thumb" src="' + escapeHtml(item.image) + '" alt="" loading="lazy" onerror="this.outerHTML=\'<div class=&quot;flash-thumb-fallback&quot;>\\uD83D\\uDCF0</div>\';" />'
-          : '<div class="flash-thumb-fallback">📰</div>';
-        var ago = "";
-        if (item.publishedAt) {
-          var diffMin = Math.round((Date.now() - new Date(item.publishedAt).getTime()) / 60000);
-          ago = diffMin < 60 ? diffMin + "m ago" : Math.round(diffMin / 60) + "h ago";
-        }
+      function flashTickerItemHtml(item) {
         return (
-          '<a class="flash-item" href="' + escapeHtml(item.url) + '" target="_blank" rel="noopener noreferrer">' +
-            thumb +
-            '<div class="flash-body">' +
-              '<div class="flash-headline">' + escapeHtml(item.title) + '</div>' +
-              (item.summary ? '<div class="flash-summary">' + escapeHtml(item.summary) + '</div>' : '') +
-              '<div class="flash-meta">' + escapeHtml(item.source || "") + (ago ? ' · ' + ago : '') + '</div>' +
-            '</div>' +
-          '</a>'
+          '<span class="news-ticker-item">' +
+            '<a href="' + escapeHtml(item.url) + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(item.title) + '</a>' +
+            '<span class="news-ticker-source">' + escapeHtml(item.source || "") + '</span>' +
+          '</span>'
         );
       }
 
       function renderFlashNews() {
-        var el = document.getElementById("flashNews");
+        var el = document.getElementById("newsTicker");
         if (!lastFlashItems || !lastFlashItems.length) {
-          el.innerHTML = '<div class="flash-item" style="align-items:center;justify-content:center;color:var(--text-muted);font-size:12px;">Loading market news…</div>';
+          el.innerHTML = '<div class="news-ticker-item" style="color:var(--text-muted);">Loading market news…</div>';
           return;
         }
-        el.innerHTML = lastFlashItems.map(flashItemHtml).join("");
+        // Rendered twice back-to-back in one scrolling track so translateX
+        // can loop seamlessly at -50% instead of snapping back to start.
+        var sep = '<span class="news-ticker-sep">●</span>';
+        var once = lastFlashItems.map(flashTickerItemHtml).join(sep);
+        el.innerHTML = '<div class="news-ticker-track">' + once + sep + once + sep + '</div>';
       }
 
       function loadFlashNews() {
