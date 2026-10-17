@@ -85,6 +85,20 @@ const CATEGORIES = [
   },
 ];
 
+// Used only by ?mode=flash (the live trading board's "market-moving news"
+// panel) — same market-focused feeds as the usStocks category above, just a
+// separate standalone response shape (flat list, not the 9-category digest)
+// and a larger item count (5, vs. 3 for a digest section).
+const FLASH_CATEGORY = {
+  key: "flash",
+  label: "Market-Moving News",
+  feeds: [
+    { url: "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=20910258", source: "CNBC" },
+    { url: "https://feeds.content.dowjones.io/public/rss/mw_topstories", source: "MarketWatch" },
+  ],
+};
+const FLASH_ITEMS = 5;
+
 function corsHeaders() {
   return {
     "Access-Control-Allow-Origin": ALLOWED_ORIGIN,
@@ -262,7 +276,8 @@ async function fetchWithTimeout(url, timeoutMs) {
   }
 }
 
-async function fetchCategory(category) {
+async function fetchCategory(category, limit) {
+  limit = limit || ITEMS_PER_CATEGORY;
   var results = await Promise.allSettled(
     category.feeds.map(function (feed) { return fetchWithTimeout(feed.url, FETCH_TIMEOUT_MS); })
   );
@@ -291,7 +306,7 @@ async function fetchCategory(category) {
 
   deduped.sort(function (a, b) { return b._sortTime - a._sortTime; });
 
-  return deduped.slice(0, ITEMS_PER_CATEGORY).map(function (item) {
+  return deduped.slice(0, limit).map(function (item) {
     return {
       title: item.title,
       url: item.url,
@@ -417,8 +432,28 @@ export default {
 
     var reqUrl = new URL(request.url);
     var bypassCache = reqUrl.searchParams.get("fresh") === "1";
-    var cacheKey = new Request(reqUrl.origin + "/digest", { method: "GET" });
+    var mode = reqUrl.searchParams.get("mode");
     var cache = caches.default;
+
+    if (mode === "flash") {
+      var flashCacheKey = new Request(reqUrl.origin + "/flash", { method: "GET" });
+      if (!bypassCache) {
+        var cachedFlash = await cache.match(flashCacheKey);
+        if (cachedFlash) return cachedFlash;
+      }
+      try {
+        var items = await fetchCategory(FLASH_CATEGORY, FLASH_ITEMS);
+        var flashResponse = jsonResponse({ updated: new Date().toISOString(), items: items });
+        var toCacheFlash = flashResponse.clone();
+        toCacheFlash.headers.set("Cache-Control", "public, max-age=" + CACHE_TTL_SECONDS);
+        ctx.waitUntil(cache.put(flashCacheKey, toCacheFlash));
+        return flashResponse;
+      } catch (err) {
+        return jsonResponse({ error: err.message || "Unknown error" }, 502);
+      }
+    }
+
+    var cacheKey = new Request(reqUrl.origin + "/digest", { method: "GET" });
     if (!bypassCache) {
       var cached = await cache.match(cacheKey);
       if (cached) return cached;
