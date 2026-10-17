@@ -13,13 +13,13 @@
         --tile-border-hover: #4A4A42;
         --text-primary: #F5F3EE;
         --text-secondary: #D7D5CC;
-        /* Brightened from the original #74726A / #5C5A53 — too low-contrast
-           on the black background to read from across a room on a TV. These
-           two variables feed every label on the page (macro box labels, ATR,
-           gauge captions, card/indicator/window labels, chart axis text), so
-           raising them here fixes all of it in one place. */
-        --text-muted: #A8A6A0;
-        --text-faint: #8A887F;
+        /* Brightened from the original #74726A / #5C5A53 (then #A8A6A0 /
+           #8A887F, still too dull from across a room) — these two variables
+           feed every secondary label on the page (ATR, gauge captions,
+           card/indicator/window labels, chart axis text), so raising them
+           here fixes all of it in one place. */
+        --text-muted: #C2C0B8;
+        --text-faint: #9D9B93;
       }
       * { box-sizing: border-box; }
       html, body {
@@ -86,23 +86,23 @@
          Priced via the nearest US-listed ETF proxy for anything Alpaca
          doesn't serve as a raw index (VIX, DXY, Nikkei, FTSE, etc.) —
          see MACRO_ROWS in the script for the mapping. ---- */
-      .macro-strip { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
+      .macro-strip { display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; }
       .macro-row { display: flex; gap: 8px; }
       .macro-box {
         flex: 1;
         background: var(--tile-bg);
         border: 1px solid var(--tile-border);
         border-radius: 8px;
-        padding: 6px 10px;
+        padding: 9px 14px;
         display: flex;
         flex-direction: column;
-        gap: 1px;
+        gap: 3px;
         min-width: 0;
       }
-      .macro-label { font-size: 9.5px; letter-spacing: 0.3px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-      .macro-price-row { display: flex; align-items: baseline; gap: 6px; }
-      .macro-price { font-size: 13.5px; font-weight: 700; color: var(--text-primary); }
-      .macro-change { font-size: 11px; font-weight: 600; }
+      .macro-label { font-size: 13px; font-weight: 700; letter-spacing: 0.2px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .macro-price-row { display: flex; align-items: baseline; gap: 8px; }
+      .macro-price { font-size: 16px; font-weight: 700; color: var(--text-primary); }
+      .macro-change { font-size: 12.5px; font-weight: 700; }
 
       /* ---- Grid + news side-by-side row, filling all remaining height
          below the macro strip (and above the footer) with no dead space. ---- */
@@ -854,7 +854,7 @@
       function reasonsHtml(detailed) {
         if (!detailed || !detailed.reasons.length) return '<div class="reason-row zero"><span>No individual badge is driving this — everything is reading neutral</span><span>0</span></div>';
         return detailed.reasons.map(function (r) {
-          var color = r.delta > 0 ? "#9FCB86" : (r.delta < 0 ? "#E9A6A6" : "#A8A6A0");
+          var color = r.delta > 0 ? "#9FCB86" : (r.delta < 0 ? "#E9A6A6" : "#C2C0B8");
           return '<div class="reason-row' + (r.delta === 0 ? ' zero' : '') + '"><span style="color:#D7D5CC;">' + escapeHtml(r.text) + '</span><span style="color:' + color + ';font-weight:700;">' + (r.delta > 0 ? '+' : '') + r.delta + '</span></div>';
         }).join("");
       }
