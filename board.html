@@ -13,8 +13,13 @@
         --tile-border-hover: #4A4A42;
         --text-primary: #F5F3EE;
         --text-secondary: #D7D5CC;
-        --text-muted: #74726A;
-        --text-faint: #5C5A53;
+        /* Brightened from the original #74726A / #5C5A53 — too low-contrast
+           on the black background to read from across a room on a TV. These
+           two variables feed every label on the page (macro box labels, ATR,
+           gauge captions, card/indicator/window labels, chart axis text), so
+           raising them here fixes all of it in one place. */
+        --text-muted: #A8A6A0;
+        --text-faint: #8A887F;
       }
       * { box-sizing: border-box; }
       html, body {
@@ -206,7 +211,7 @@
       .gauge-meta { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--text-muted); margin-bottom: 4px; }
       .gauge-track { position: relative; height: 7px; border-radius: 3.5px; }
       .gauge-marker { position: absolute; top: -3px; width: 2px; height: 13px; background: #F5C542; border-radius: 1px; }
-      .gauge-note { font-size: 10.5px; color: #9C9A92; margin-top: 4px; }
+      .gauge-note { font-size: 10.5px; color: var(--text-muted); margin-top: 4px; }
       .badges-row { display: flex; gap: 6px; flex-wrap: wrap; }
       .mini-badge { font-size: 10.5px; padding: 3px 9px; border-radius: 10px; white-space: nowrap; }
       .tile-error { font-size: 12px; color: #E08A8A; padding: 10px 0; }
@@ -849,7 +854,7 @@
       function reasonsHtml(detailed) {
         if (!detailed || !detailed.reasons.length) return '<div class="reason-row zero"><span>No individual badge is driving this — everything is reading neutral</span><span>0</span></div>';
         return detailed.reasons.map(function (r) {
-          var color = r.delta > 0 ? "#9FCB86" : (r.delta < 0 ? "#E9A6A6" : "#9C9A92");
+          var color = r.delta > 0 ? "#9FCB86" : (r.delta < 0 ? "#E9A6A6" : "#A8A6A0");
           return '<div class="reason-row' + (r.delta === 0 ? ' zero' : '') + '"><span style="color:#D7D5CC;">' + escapeHtml(r.text) + '</span><span style="color:' + color + ';font-weight:700;">' + (r.delta > 0 ? '+' : '') + r.delta + '</span></div>';
         }).join("");
       }
