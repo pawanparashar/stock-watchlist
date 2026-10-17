@@ -76,6 +76,29 @@
       }
       #refreshBtn:disabled { opacity: 0.5; cursor: default; }
 
+      /* ---- Macro context strip — two rows of small boxes above the
+         tile grid: broad markets (row 1), commodities/macro (row 2).
+         Priced via the nearest US-listed ETF proxy for anything Alpaca
+         doesn't serve as a raw index (VIX, DXY, Nikkei, FTSE, etc.) —
+         see MACRO_ROWS in the script for the mapping. ---- */
+      .macro-strip { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
+      .macro-row { display: flex; gap: 8px; }
+      .macro-box {
+        flex: 1;
+        background: var(--tile-bg);
+        border: 1px solid var(--tile-border);
+        border-radius: 8px;
+        padding: 6px 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+        min-width: 0;
+      }
+      .macro-label { font-size: 9.5px; letter-spacing: 0.3px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .macro-price-row { display: flex; align-items: baseline; gap: 6px; }
+      .macro-price { font-size: 13.5px; font-weight: 700; color: var(--text-primary); }
+      .macro-change { font-size: 11px; font-weight: 600; }
+
       /* ---- Tile grid ---- */
       /* Fixed 5x2 for the board's actual use case (10 tickers on a TV at a
          known wide aspect ratio) so tiles stretch to fill the full height
@@ -214,6 +237,8 @@
         </div>
       </div>
 
+      <div class="macro-strip" id="macroStrip"></div>
+
       <div id="grid">
         <div class="empty-state">Loading board&hellip;</div>
       </div>
@@ -232,6 +257,34 @@
       var TICKERS = ["TSLA","SPCX","GOOGL","META","MSFT","NVDA","AMZN","AAPL","AMD","IREN"];
       var WORKER_URL = "https://stock-watchlist-proxy.pawan227.workers.dev/";
       var REFRESH_MS = 5 * 60 * 1000;
+
+      // Macro context strip, two rows above the tile grid. Alpaca only
+      // serves US-listed securities, not raw indices/FX (no spot VIX, DXY,
+      // Nikkei 225, FTSE 100, etc.) — each box below is priced through the
+      // nearest liquid US-listed ETF that tracks it instead. Confirmed each
+      // of these returns real data before wiring this up.
+      var MACRO_ROWS = [
+        [ // Row 1 — broad markets
+          { symbol: "SPY",  label: "S&P 500" },
+          { symbol: "QQQ",  label: "Nasdaq 100" },
+          { symbol: "VIXY", label: "VIX (fear gauge)" },
+          { symbol: "EWJ",  label: "Japan" },
+          { symbol: "INDA", label: "India" },
+          { symbol: "EWU",  label: "UK" },
+          { symbol: "FXI",  label: "China" }
+        ],
+        [ // Row 2 — commodities & macro
+          { symbol: "GLD", label: "Gold" },
+          { symbol: "SLV", label: "Silver" },
+          { symbol: "USO", label: "Oil (WTI)" },
+          { symbol: "UUP", label: "US Dollar" },
+          { symbol: "TLT", label: "20Y Treasury" },
+          { symbol: "EWG", label: "Germany / Europe" }
+        ]
+      ];
+      var MACRO_SYMBOLS = MACRO_ROWS.reduce(function (acc, row) {
+        return acc.concat(row.map(function (m) { return m.symbol; }));
+      }, []);
       var COLS = ["7d","15d","30d","90d","180d","365d"];
       var STOP_ATR_MULT = 2;
 
@@ -410,11 +463,37 @@
       }
 
       // ---- Data + render ----
-      var lastData = {};        // symbol -> row
+      var lastData = {};        // symbol -> row (TICKERS only)
+      var macroData = {};       // symbol -> row (MACRO_SYMBOLS only)
       var prevSignals = {};     // symbol -> tier label, from the previous successful poll
       var changedSymbols = {};  // symbol -> true, cleared each render cycle
       var countdownSeconds = REFRESH_MS / 1000;
       var countdownTimer = null;
+
+      function macroBoxHtml(meta) {
+        var row = macroData[meta.symbol];
+        if (!row || row.error || !row.price) {
+          return '<div class="macro-box"><div class="macro-label">' + escapeHtml(meta.label) + '</div><div class="macro-price">—</div></div>';
+        }
+        var prevClose = row.sparkline && row.sparkline.length > 1 ? row.sparkline[row.sparkline.length - 2].c : null;
+        var changePct = prevClose ? ((row.price - prevClose) / prevClose) * 100 : null;
+        var changeClass = changePct === null ? "flat" : (changePct > 0 ? "up" : (changePct < 0 ? "down" : "flat"));
+        var changeText = changePct === null ? "" : (changePct >= 0 ? "+" : "") + changePct.toFixed(1) + "%";
+        return (
+          '<div class="macro-box">' +
+            '<div class="macro-label">' + escapeHtml(meta.label) + '</div>' +
+            '<div class="macro-price-row"><span class="macro-price">' + fmt(row.price) + '</span>' +
+            (changeText ? '<span class="macro-change ' + changeClass + '">' + changeText + '</span>' : '') + '</div>' +
+          '</div>'
+        );
+      }
+
+      function renderMacroStrip() {
+        var html = MACRO_ROWS.map(function (row) {
+          return '<div class="macro-row">' + row.map(macroBoxHtml).join("") + '</div>';
+        }).join("");
+        document.getElementById("macroStrip").innerHTML = html;
+      }
 
       function volatilityBadge(row) {
         if (!row.atr || !row.price) return "";
@@ -498,7 +577,8 @@
         var btn = document.getElementById("refreshBtn");
         btn.disabled = true;
 
-        var url = WORKER_URL + "?symbols=" + encodeURIComponent(TICKERS.join(","));
+        var allSymbols = TICKERS.concat(MACRO_SYMBOLS);
+        var url = WORKER_URL + "?symbols=" + encodeURIComponent(allSymbols.join(","));
         fetch(url)
           .then(function (res) {
             if (!res.ok) throw new Error("Request failed: " + res.status);
@@ -507,13 +587,16 @@
           .then(function (json) {
             if (json.error) throw new Error(json.error);
             var rows = json.data || [];
+            var tickerSet = {};
+            TICKERS.forEach(function (s) { tickerSet[s] = true; });
 
             // Diff against the previous poll's signals before overwriting
             // lastData, so a tile flashes exactly once for the poll where
-            // its signal actually changed.
+            // its signal actually changed. Macro symbols don't carry a
+            // signal badge, so they're excluded from this diff entirely.
             changedSymbols = {};
             rows.forEach(function (row) {
-              if (row.error) return;
+              if (row.error || !tickerSet[row.symbol]) return;
               var detailed = computeSignalDetailed(row);
               var label = detailed ? detailed.tier.label : null;
               if (label && prevSignals[row.symbol] && prevSignals[row.symbol] !== label) {
@@ -523,9 +606,14 @@
             });
 
             lastData = {};
-            rows.forEach(function (row) { lastData[row.symbol] = row; });
+            macroData = {};
+            rows.forEach(function (row) {
+              if (tickerSet[row.symbol]) lastData[row.symbol] = row;
+              else macroData[row.symbol] = row;
+            });
 
             render();
+            renderMacroStrip();
             document.getElementById("updatedLabel").textContent = "Updated " + new Date().toLocaleTimeString();
             resetCountdown();
           })
