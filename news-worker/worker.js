@@ -100,6 +100,73 @@ const FLASH_CATEGORY = {
 };
 const FLASH_ITEMS = 25;
 
+// Used only by ?mode=indices — real index/futures points (e.g. "Nifty
+// 23,146.15"), not an ETF proxy's own share price. Alpaca only serves
+// US-listed securities (no raw global indices at all), so this hits Yahoo
+// Finance's unofficial chart API instead, confirmed reachable from
+// Cloudflare's egress (unlike Google News, which blocks it). `format`
+// controls display: "index" = plain comma-grouped number (these aren't
+// denominated in a specific currency in any way worth showing a $ for),
+// "currency" = real $ per unit (gold/silver/oil futures), "percent" = a
+// yield already expressed as the number itself (5.10 -> "5.10%").
+const INDICES = [
+  { symbol: "%5EGSPC", label: "S&P 500", format: "index" },
+  { symbol: "%5EIXIC", label: "Nasdaq Composite", format: "index" },
+  { symbol: "%5EVIX", label: "VIX", format: "index" },
+  { symbol: "%5ENSEI", label: "Nifty 50 (India)", format: "index" },
+  { symbol: "%5EBSESN", label: "Sensex (India)", format: "index" },
+  { symbol: "%5EN225", label: "Nikkei 225 (Japan)", format: "index" },
+  { symbol: "%5EHSI", label: "Hang Seng (China)", format: "index" },
+  { symbol: "%5EFTSE", label: "FTSE 100 (UK)", format: "index" },
+  { symbol: "%5EGDAXI", label: "DAX (Germany)", format: "index" },
+  { symbol: "GC%3DF", label: "Gold", format: "currency" },
+  { symbol: "SI%3DF", label: "Silver", format: "currency" },
+  { symbol: "CL%3DF", label: "Oil (WTI)", format: "currency" },
+  { symbol: "DX-Y.NYB", label: "US Dollar Index", format: "index" },
+  { symbol: "%5ETNX", label: "10Y Treasury Yield", format: "percent" },
+];
+
+async function fetchOneIndex(ix) {
+  var res = await fetchWithTimeout("https://query1.finance.yahoo.com/v8/finance/chart/" + ix.symbol, FETCH_TIMEOUT_MS);
+  if (!res.ok) throw new Error("status " + res.status);
+  var json = await res.json();
+  var meta = json && json.chart && json.chart.result && json.chart.result[0] && json.chart.result[0].meta;
+  if (!meta || meta.regularMarketPrice === undefined) throw new Error("no meta");
+  return {
+    label: ix.label,
+    format: ix.format,
+    price: meta.regularMarketPrice,
+    changePercent: meta.regularMarketChangePercent !== undefined ? meta.regularMarketChangePercent : null,
+    weekLow52: meta.fiftyTwoWeekLow !== undefined ? meta.fiftyTwoWeekLow : null,
+    weekHigh52: meta.fiftyTwoWeekHigh !== undefined ? meta.fiftyTwoWeekHigh : null,
+  };
+}
+
+async function fetchIndices() {
+  // Firing all 14 requests at once occasionally gets 1-2 dropped by Yahoo
+  // (observed directly — same symbols succeed individually seconds later),
+  // so anything that fails the first pass gets one retry, after the initial
+  // burst has had a moment to clear, instead of just being silently absent
+  // from the strip for that whole 5-minute cache cycle.
+  var firstPass = await Promise.allSettled(INDICES.map(fetchOneIndex));
+
+  var items = [];
+  var toRetry = [];
+  firstPass.forEach(function (r, i) {
+    if (r.status === "fulfilled") items.push(r.value);
+    else toRetry.push(INDICES[i]);
+  });
+
+  if (toRetry.length) {
+    await new Promise(function (resolve) { setTimeout(resolve, 400); });
+    var retryPass = await Promise.allSettled(toRetry.map(fetchOneIndex));
+    retryPass.forEach(function (r) {
+      if (r.status === "fulfilled") items.push(r.value);
+    });
+  }
+  return items;
+}
+
 function corsHeaders() {
   return {
     "Access-Control-Allow-Origin": ALLOWED_ORIGIN,
@@ -435,6 +502,24 @@ export default {
     var bypassCache = reqUrl.searchParams.get("fresh") === "1";
     var mode = reqUrl.searchParams.get("mode");
     var cache = caches.default;
+
+    if (mode === "indices") {
+      var indicesCacheKey = new Request(reqUrl.origin + "/indices", { method: "GET" });
+      if (!bypassCache) {
+        var cachedIndices = await cache.match(indicesCacheKey);
+        if (cachedIndices) return cachedIndices;
+      }
+      try {
+        var indicesItems = await fetchIndices();
+        var indicesResponse = jsonResponse({ updated: new Date().toISOString(), items: indicesItems });
+        var toCacheIndices = indicesResponse.clone();
+        toCacheIndices.headers.set("Cache-Control", "public, max-age=" + CACHE_TTL_SECONDS);
+        ctx.waitUntil(cache.put(indicesCacheKey, toCacheIndices));
+        return indicesResponse;
+      } catch (err) {
+        return jsonResponse({ error: err.message || "Unknown error" }, 502);
+      }
+    }
 
     if (mode === "flash") {
       var flashCacheKey = new Request(reqUrl.origin + "/flash", { method: "GET" });

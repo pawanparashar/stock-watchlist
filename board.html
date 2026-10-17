@@ -132,10 +132,10 @@
       #refreshBtn:disabled { opacity: 0.5; cursor: default; }
 
       /* ---- Macro context strip — two rows of small boxes above the
-         tile grid: broad markets (row 1), commodities/macro (row 2).
-         Priced via the nearest US-listed ETF proxy for anything Alpaca
-         doesn't serve as a raw index (VIX, DXY, Nikkei, FTSE, etc.) —
-         see MACRO_ROWS in the script for the mapping. ---- */
+         tile grid: broad markets/indices (row 1), commodities/macro (row 2).
+         Real index/futures points via news-worker's ?mode=indices (Yahoo
+         Finance server-side, since Alpaca has no raw global indices at
+         all) — see INDEX_ROW_LABELS in the script for the mapping. ---- */
       .macro-strip { display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; }
       .macro-row { display: flex; gap: 8px; }
       .macro-box {
@@ -318,38 +318,18 @@
       var WORKER_URL = "https://stock-watchlist-proxy.pawan227.workers.dev/";
       var REFRESH_MS = 5 * 60 * 1000;
 
-      // Macro context strip, two rows above the tile grid. Alpaca only
-      // serves US-listed securities, not raw indices/FX (no spot VIX, DXY,
-      // Nikkei 225, FTSE 100, etc.) — each box below is priced through the
-      // nearest liquid US-listed ETF that tracks it instead. Confirmed each
-      // of these returns real data before wiring this up.
-      // `label` keeps the ticker in it on purpose — these prices are each
-      // an ETF proxy's own share price (e.g. EWJ's $94.88), not the index
-      // level you'd see quoted elsewhere (Nikkei is ~40,000+). Spelling out
-      // the ticker makes that obvious at a glance instead of needing an
-      // explanation every time; the % change is always the real signal.
-      var MACRO_ROWS = [
-        [ // Row 1 — broad markets
-          { symbol: "SPY",  label: "S&P 500 (SPY)" },
-          { symbol: "QQQ",  label: "Nasdaq 100 (QQQ)" },
-          { symbol: "VIXY", label: "VIX proxy (VIXY)" },
-          { symbol: "EWJ",  label: "Japan (EWJ)" },
-          { symbol: "INDA", label: "India (INDA)" },
-          { symbol: "EWU",  label: "UK (EWU)" },
-          { symbol: "FXI",  label: "China (FXI)" }
-        ],
-        [ // Row 2 — commodities & macro
-          { symbol: "GLD", label: "Gold (GLD)" },
-          { symbol: "SLV", label: "Silver (SLV)" },
-          { symbol: "USO", label: "Oil WTI (USO)" },
-          { symbol: "UUP", label: "US Dollar (UUP)" },
-          { symbol: "TLT", label: "20Y Treasury (TLT)" },
-          { symbol: "EWG", label: "Germany/Europe (EWG)" }
-        ]
+      // Macro context strip, two rows above the tile grid — now REAL index/
+      // futures points (e.g. Nifty "23,146.15"), not an ETF proxy's own
+      // share price. Alpaca can't serve these at all (US-equities-only, no
+      // raw global indices), so this data comes from a separate endpoint
+      // (news-digest-proxy's ?mode=indices, which hits Yahoo Finance
+      // server-side) — see INDEX_ROW_LABELS below for which of that
+      // response's items go in which row; the actual symbol list and
+      // fetching live in news-worker/worker.js's INDICES config.
+      var INDEX_ROW_LABELS = [
+        ["S&P 500", "Nasdaq Composite", "VIX", "Nifty 50 (India)", "Sensex (India)", "Nikkei 225 (Japan)", "Hang Seng (China)"],
+        ["FTSE 100 (UK)", "DAX (Germany)", "Gold", "Silver", "Oil (WTI)", "US Dollar Index", "10Y Treasury Yield"]
       ];
-      var MACRO_SYMBOLS = MACRO_ROWS.reduce(function (acc, row) {
-        return acc.concat(row.map(function (m) { return m.symbol; }));
-      }, []);
       var COLS = ["7d","15d","30d","90d","180d","365d"];
       var STOP_ATR_MULT = 2;
 
@@ -537,27 +517,33 @@
 
       // ---- Data + render ----
       var lastData = {};        // symbol -> row (TICKERS only)
-      var macroData = {};       // symbol -> row (MACRO_SYMBOLS only)
+      var indicesData = {};     // label -> item, from news-worker's ?mode=indices
       var prevSignals = {};     // symbol -> tier label, from the previous successful poll
       var changedSymbols = {};  // symbol -> true, cleared each render cycle
       var countdownSeconds = REFRESH_MS / 1000;
       var countdownTimer = null;
 
-      function macroBoxHtml(meta) {
-        var row = macroData[meta.symbol];
-        if (!row || row.error || !row.price) {
-          return '<div class="macro-box"><div class="macro-label">' + escapeHtml(meta.label) + '</div><div class="macro-price">—</div></div>';
+      function formatIndexValue(n, format) {
+        if (n === null || n === undefined || isNaN(n)) return "—";
+        if (format === "percent") return n.toFixed(2) + "%";
+        var formatted = n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        return format === "currency" ? "$" + formatted : formatted;
+      }
+
+      function macroBoxHtml(label) {
+        var row = indicesData[label];
+        if (!row) {
+          return '<div class="macro-box"><div class="macro-label">' + escapeHtml(label) + '</div><div class="macro-price">—</div></div>';
         }
-        var prevClose = row.sparkline && row.sparkline.length > 1 ? row.sparkline[row.sparkline.length - 2].c : null;
-        var changePct = prevClose ? ((row.price - prevClose) / prevClose) * 100 : null;
-        var changeClass = changePct === null ? "flat" : (changePct > 0 ? "up" : (changePct < 0 ? "down" : "flat"));
-        var changeText = changePct === null ? "" : (changePct >= 0 ? "+" : "") + changePct.toFixed(1) + "%";
-        var w365 = row.windows ? row.windows["365d"] : null;
-        var rangeHtml = w365 ? '<div class="macro-range">365d ' + fmt(w365.low) + ' – ' + fmt(w365.high) + '</div>' : '';
+        var changeClass = row.changePercent === null ? "flat" : (row.changePercent > 0 ? "up" : (row.changePercent < 0 ? "down" : "flat"));
+        var changeText = row.changePercent === null ? "" : (row.changePercent >= 0 ? "+" : "") + row.changePercent.toFixed(2) + "%";
+        var rangeHtml = (row.weekLow52 !== null && row.weekHigh52 !== null)
+          ? '<div class="macro-range">52wk ' + formatIndexValue(row.weekLow52, row.format) + ' – ' + formatIndexValue(row.weekHigh52, row.format) + '</div>'
+          : '';
         return (
           '<div class="macro-box">' +
-            '<div class="macro-label">' + escapeHtml(meta.label) + '</div>' +
-            '<div class="macro-price-row"><span class="macro-price">' + fmt(row.price) + '</span>' +
+            '<div class="macro-label">' + escapeHtml(label) + '</div>' +
+            '<div class="macro-price-row"><span class="macro-price">' + formatIndexValue(row.price, row.format) + '</span>' +
             (changeText ? '<span class="macro-change ' + changeClass + '">' + changeText + '</span>' : '') + '</div>' +
             rangeHtml +
           '</div>'
@@ -565,10 +551,27 @@
       }
 
       function renderMacroStrip() {
-        var html = MACRO_ROWS.map(function (row) {
+        var html = INDEX_ROW_LABELS.map(function (row) {
           return '<div class="macro-row">' + row.map(macroBoxHtml).join("") + '</div>';
         }).join("");
         document.getElementById("macroStrip").innerHTML = html;
+      }
+
+      function loadIndices() {
+        fetch(NEWS_WORKER_URL + "?mode=indices")
+          .then(function (res) {
+            if (!res.ok) throw new Error("Request failed: " + res.status);
+            return res.json();
+          })
+          .then(function (json) {
+            if (json.error) throw new Error(json.error);
+            indicesData = {};
+            (json.items || []).forEach(function (item) { indicesData[item.label] = item; });
+            renderMacroStrip();
+          })
+          .catch(function () {
+            // Keep showing whatever was last rendered.
+          });
       }
 
       // Only flags the actionable extremes (Low/High) — "Moderate" is most
@@ -678,8 +681,7 @@
         var btn = document.getElementById("refreshBtn");
         btn.disabled = true;
 
-        var allSymbols = TICKERS.concat(MACRO_SYMBOLS);
-        var url = WORKER_URL + "?symbols=" + encodeURIComponent(allSymbols.join(","));
+        var url = WORKER_URL + "?symbols=" + encodeURIComponent(TICKERS.join(","));
         fetch(url)
           .then(function (res) {
             if (!res.ok) throw new Error("Request failed: " + res.status);
@@ -688,16 +690,13 @@
           .then(function (json) {
             if (json.error) throw new Error(json.error);
             var rows = json.data || [];
-            var tickerSet = {};
-            TICKERS.forEach(function (s) { tickerSet[s] = true; });
 
             // Diff against the previous poll's signals before overwriting
             // lastData, so a tile flashes exactly once for the poll where
-            // its signal actually changed. Macro symbols don't carry a
-            // signal badge, so they're excluded from this diff entirely.
+            // its signal actually changed.
             changedSymbols = {};
             rows.forEach(function (row) {
-              if (row.error || !tickerSet[row.symbol]) return;
+              if (row.error) return;
               var detailed = computeSignalDetailed(row);
               var label = detailed ? detailed.tier.label : null;
               if (label && prevSignals[row.symbol] && prevSignals[row.symbol] !== label) {
@@ -707,14 +706,9 @@
             });
 
             lastData = {};
-            macroData = {};
-            rows.forEach(function (row) {
-              if (tickerSet[row.symbol]) lastData[row.symbol] = row;
-              else macroData[row.symbol] = row;
-            });
+            rows.forEach(function (row) { lastData[row.symbol] = row; });
 
             render();
-            renderMacroStrip();
             document.getElementById("updatedLabel").textContent = "Updated " + formatUpdatedStamp();
             resetCountdown();
           })
@@ -739,6 +733,7 @@
         if (countdownSeconds <= 0) {
           loadData(true);
           loadFlashNews();
+          loadIndices();
           return;
         }
         var m = Math.floor(countdownSeconds / 60), s = Math.floor(countdownSeconds % 60);
@@ -746,7 +741,7 @@
         renderStatePill();
       }
 
-      document.getElementById("refreshBtn").addEventListener("click", function () { loadData(false); loadFlashNews(); });
+      document.getElementById("refreshBtn").addEventListener("click", function () { loadData(false); loadFlashNews(); loadIndices(); });
 
       // ---- Detail overlay ----
       // Real candlestick + volume chart (worker's sparkline carries full OHLCV
@@ -1017,6 +1012,7 @@
       renderFlashNews();
       loadData(false);
       loadFlashNews();
+      loadIndices();
       setInterval(tickCountdown, 1000);
 
       // Registers the app-shell service worker (see sw.js) so the board is
