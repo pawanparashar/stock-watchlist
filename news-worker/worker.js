@@ -105,6 +105,40 @@ const FLASH_CATEGORY = {
 };
 const FLASH_ITEMS = 25;
 
+// Used only by ?mode=broadflash — the board's second, bigger ticker: broad
+// topic coverage (general flash news, US/India markets, US/India
+// government, tech/gadgets, India news) rather than the top ticker's narrow
+// "market-moving" focus. Every feed below was confirmed reachable from
+// Cloudflare's egress before being added (The Hill in particular sits
+// behind PerimeterX bot-protection and looked risky — it isn't; redirect:
+// "follow" handles it fine). Not every feed carries per-item images; ones
+// that don't (NPR, CNBC, TechCrunch) just fall back to the ticker's emoji
+// placeholder, same as the top ticker already does.
+const BROAD_CATEGORY = {
+  key: "broadflash",
+  label: "Flash News",
+  feeds: [
+    { url: "https://feeds.npr.org/1001/rss.xml", source: "NPR" },
+    { url: "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=20910258", source: "CNBC" },
+    { url: "https://feeds.content.dowjones.io/public/rss/mw_topstories", source: "MarketWatch" },
+    { url: "https://thehill.com/feed/", source: "The Hill" },
+    { url: "https://feeds.npr.org/1014/rss.xml", source: "NPR Politics" },
+    { url: "https://techcrunch.com/feed/", source: "TechCrunch" },
+    { url: "https://www.engadget.com/rss.xml", source: "Engadget" },
+    { url: "https://feeds.arstechnica.com/arstechnica/index", source: "Ars Technica" },
+    { url: "https://timesofindia.indiatimes.com/rssfeeds/-2128936835.cms", source: "Times of India" },
+    { url: "https://www.thehindu.com/news/national/feeder/default.rss", source: "The Hindu" },
+    { url: "https://www.hindustantimes.com/feeds/rss/india-news/rssfeed.xml", source: "Hindustan Times" },
+    { url: "https://feeds.bbci.co.uk/news/world/rss.xml", source: "BBC World" },
+  ],
+};
+const BROAD_ITEMS = 120;
+// Max items any single feed can contribute — keeps a high-cadence source
+// (The Hindu) from crowding out slower ones (TechCrunch, Ars Technica) by
+// pure recency. 12 feeds * 12 cap = up to 144 pooled before the top 120 by
+// time are picked, so most feeds show up even on a quiet news day.
+const BROAD_PER_SOURCE_CAP = 12;
+
 // Used only by ?mode=indices — real index/futures points (e.g. "Nifty
 // 23,146.15"), not an ETF proxy's own share price. Alpaca only serves
 // US-listed securities (no raw global indices at all), so this hits Yahoo
@@ -349,7 +383,7 @@ async function fetchWithTimeout(url, timeoutMs) {
   }
 }
 
-async function fetchCategory(category, limit) {
+async function fetchCategory(category, limit, perSourceCap) {
   limit = limit || ITEMS_PER_CATEGORY;
   var results = await Promise.allSettled(
     category.feeds.map(function (feed) { return fetchWithTimeout(feed.url, FETCH_TIMEOUT_MS); })
@@ -378,6 +412,23 @@ async function fetchCategory(category, limit) {
   });
 
   deduped.sort(function (a, b) { return b._sortTime - a._sortTime; });
+
+  // Without this, a single high-cadence source (The Hindu publishes far
+  // more often than TechCrunch or Ars Technica) fills the whole result by
+  // pure recency and silently crowds other topics out entirely — observed
+  // directly: TechCrunch, Ars Technica, NPR Politics and CNBC all had zero
+  // items in a 120-item pull before this cap existed, despite being in the
+  // feed list. Only applied when the caller asks for it (a 2-feed category
+  // like FLASH_CATEGORY doesn't need it).
+  if (perSourceCap) {
+    var sourceCounts = {};
+    deduped = deduped.filter(function (item) {
+      var count = sourceCounts[item.source] || 0;
+      if (count >= perSourceCap) return false;
+      sourceCounts[item.source] = count + 1;
+      return true;
+    });
+  }
 
   return deduped.slice(0, limit).map(function (item) {
     return {
@@ -507,6 +558,24 @@ export default {
     var bypassCache = reqUrl.searchParams.get("fresh") === "1";
     var mode = reqUrl.searchParams.get("mode");
     var cache = caches.default;
+
+    if (mode === "broadflash") {
+      var broadCacheKey = new Request(reqUrl.origin + "/broadflash", { method: "GET" });
+      if (!bypassCache) {
+        var cachedBroad = await cache.match(broadCacheKey);
+        if (cachedBroad) return cachedBroad;
+      }
+      try {
+        var broadItems = await fetchCategory(BROAD_CATEGORY, BROAD_ITEMS, BROAD_PER_SOURCE_CAP);
+        var broadResponse = jsonResponse({ updated: new Date().toISOString(), items: broadItems });
+        var toCacheBroad = broadResponse.clone();
+        toCacheBroad.headers.set("Cache-Control", "public, max-age=" + BOARD_CACHE_TTL_SECONDS);
+        ctx.waitUntil(cache.put(broadCacheKey, toCacheBroad));
+        return broadResponse;
+      } catch (err) {
+        return jsonResponse({ error: err.message || "Unknown error" }, 502);
+      }
+    }
 
     if (mode === "indices") {
       var indicesCacheKey = new Request(reqUrl.origin + "/indices", { method: "GET" });
