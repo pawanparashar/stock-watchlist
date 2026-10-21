@@ -375,6 +375,16 @@
       // faster actually gets fresher data, not just a cache hit.
       var REFRESH_MS = 2 * 60 * 1000;
 
+      // Both tickers run on their own, much slower interval than the price
+      // data — see the itemsChanged-style guard in loadFlashNews/
+      // loadBroadTicker for why: polling less often means fewer re-renders,
+      // and each re-render resets the ticker's scroll animation, so a tight
+      // interval there directly caused the "jumps back to start" complaint
+      // this was built to fix. 10 min is frequent enough to catch new
+      // headlines without the scroll visibly restarting every couple of
+      // minutes.
+      var NEWS_REFRESH_MS = 10 * 60 * 1000;
+
       // Macro context strip, two rows above the tile grid — now REAL index/
       // futures points (e.g. Nifty "23,146.15"), not an ETF proxy's own
       // share price. Alpaca can't serve these at all (US-equities-only, no
@@ -785,13 +795,22 @@
         countdownSeconds = REFRESH_MS / 1000;
       }
 
+      // Price tiles + macro strip (S&P and the rest) refresh every 2 min —
+      // the two news tickers deliberately do NOT run on this cycle. Both
+      // tickers fully replace their track element on every render, which
+      // resets the CSS scroll animation to 0% — tying that to a 2-minute
+      // tick made the ticker visibly jump back to the start every 2
+      // minutes, which is the opposite of what a ticker should do. They
+      // get their own much slower interval instead (see NEWS_REFRESH_MS),
+      // and even then only actually re-render if the fetched items changed
+      // (see the itemsChanged check in loadFlashNews/loadBroadTicker) —
+      // most of the time the underlying RSS hasn't moved, so nothing
+      // restarts at all.
       function tickCountdown() {
         countdownSeconds -= 1;
         if (countdownSeconds <= 0) {
           loadData(true);
-          loadFlashNews();
           loadIndices();
-          loadBroadTicker();
           return;
         }
         var m = Math.floor(countdownSeconds / 60), s = Math.floor(countdownSeconds % 60);
@@ -799,7 +818,7 @@
         renderStatePill();
       }
 
-      document.getElementById("refreshBtn").addEventListener("click", function () { loadData(false); loadFlashNews(); loadIndices(); loadBroadTicker(); });
+      document.getElementById("refreshBtn").addEventListener("click", function () { loadData(false); loadIndices(); loadFlashNews(); loadBroadTicker(); });
 
       // ---- Detail overlay ----
       // Real candlestick + volume chart (worker's sparkline carries full OHLCV
@@ -1048,6 +1067,18 @@
         el.innerHTML = LIVE_BADGE_HTML + '<div class="news-ticker-viewport"><div class="news-ticker-track">' + once + sep + once + sep + '</div></div>';
       }
 
+      // Both tickers fully replace their track element on render, which
+      // resets the CSS scroll animation — so render is only called when the
+      // fetched item list actually differs from what's already on screen
+      // (compared by URL list, which is stable even if summary/image
+      // details shift slightly between polls). A cache hit or a quiet news
+      // stretch then changes nothing on screen, scroll position included.
+      function itemsSignature(items) {
+        return (items || []).map(function (it) { return it.url; }).join("|");
+      }
+
+      var lastFlashSignature = null;
+
       function loadFlashNews() {
         fetch(NEWS_WORKER_URL + "?mode=flash")
           .then(function (res) {
@@ -1056,7 +1087,11 @@
           })
           .then(function (json) {
             if (json.error) throw new Error(json.error);
-            lastFlashItems = json.items || [];
+            var items = json.items || [];
+            var sig = itemsSignature(items);
+            if (sig === lastFlashSignature) return;
+            lastFlashSignature = sig;
+            lastFlashItems = items;
             renderFlashNews();
           })
           .catch(function () {
@@ -1103,6 +1138,8 @@
         el.innerHTML = BROAD_LIVE_BADGE_HTML + '<div class="flash-ticker-viewport"><div class="flash-ticker-track">' + once + once + '</div></div>';
       }
 
+      var lastBroadSignature = null;
+
       function loadBroadTicker() {
         fetch(NEWS_WORKER_URL + "?mode=broadflash")
           .then(function (res) {
@@ -1111,7 +1148,11 @@
           })
           .then(function (json) {
             if (json.error) throw new Error(json.error);
-            lastBroadItems = json.items || [];
+            var items = json.items || [];
+            var sig = itemsSignature(items);
+            if (sig === lastBroadSignature) return;
+            lastBroadSignature = sig;
+            lastBroadItems = items;
             renderBroadTicker();
           })
           .catch(function () {
@@ -1128,6 +1169,7 @@
       loadIndices();
       loadBroadTicker();
       setInterval(tickCountdown, 1000);
+      setInterval(function () { loadFlashNews(); loadBroadTicker(); }, NEWS_REFRESH_MS);
 
       // Registers the app-shell service worker (see sw.js) so the board is
       // installable via Mac "Add to Dock" / iPad "Add to Home Screen" —
