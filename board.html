@@ -1412,10 +1412,53 @@
         }).join("\n");
       }
 
+      // ---- Weekly learning plan ----
+      // Week 1 starts on PREP_START_DATE (local time). Each week has a
+      // repeating pattern of difficulty levels; every 10-minute slot takes
+      // the next level in the pattern, then the next unseen item at that
+      // level (items within a level are shown in order, then repeat).
+      //   1 = Basics (lists/arrays + strings)   2 = Easy
+      //   3 = Medium                            4 = Advanced
+      // Sun Nov 15 2026, 7:10 PM local (month is 0-based). Week 1 begins with
+      // the very first basics card at this time; weeks roll over every 7 days.
+      var PREP_START_DATE = new Date(2026, 10, 15, 19, 10);
+      var PREP_LEVEL_NAMES = { 1: "Basics", 2: "Easy", 3: "Medium", 4: "Advanced" };
+      var PREP_WEEK_PATTERNS = [
+        [1],                    // week 1: basics only
+        [2, 1, 2],              // week 2: mostly easy, basics review
+        [2, 3, 2, 3, 2, 1],     // week 3: start mixing in medium
+        [3, 2, 3, 3, 4, 2],     // week 4: mostly medium, first advanced
+        [3, 4, 3, 4, 2, 3]      // week 5+: medium/advanced, easy review
+      ];
+
+      function prepWeek() {
+        var days = Math.floor((Date.now() - PREP_START_DATE.getTime()) / 86400000);
+        // (before the start date this still reports week 1)
+        return Math.max(1, Math.floor(days / 7) + 1);
+      }
+
+      function countIn(arr, v, upto) {
+        var c = 0;
+        for (var i = 0; i < upto; i++) if (arr[i] === v) c++;
+        return c;
+      }
+
       function prepItem(bank, kind) {
         if (!bank || !bank.length) return null;
-        var idx = ((prepSlot() + prepState[kind].offset) % bank.length + bank.length) % bank.length;
-        return { item: bank[idx], idx: idx };
+        var week = prepWeek();
+        var pattern = PREP_WEEK_PATTERNS[Math.min(week, PREP_WEEK_PATTERNS.length) - 1];
+        // Count slots from the start of THIS week, so every week begins at
+        // the top of its pattern and at the first item of each level.
+        var weekStart = PREP_START_DATE.getTime() + (week - 1) * 7 * 86400000;
+        var i = Math.floor((Date.now() - weekStart) / PREP_ROTATE_MS) + prepState[kind].offset;
+        var L = pattern.length;
+        var pos = ((i % L) + L) % L;
+        var level = pattern[pos];
+        var items = bank.filter(function (it) { return it.level === level; });
+        if (!items.length) items = bank;   // safety net if a level is empty
+        var occ = Math.floor(i / L) * countIn(pattern, level, L) + countIn(pattern, level, pos);
+        var idx = ((occ % items.length) + items.length) % items.length;
+        return { item: items[idx], idx: idx, week: week, level: level };
       }
 
       function prepCountdownText() {
@@ -1453,6 +1496,7 @@
         var pick = prepItem(typeof PYTHON_BANK !== "undefined" ? PYTHON_BANK : null, "python");
         if (!pick) { el.innerHTML = '<div class="tile-error">Python question bank not loaded</div>'; return; }
         var it = pick.item, st = prepState.python;
+        var weekChip = "Week " + pick.week + " \u00b7 " + (PREP_LEVEL_NAMES[pick.level] || "");
         var typeLabel = { mcq: "What's the output?", code: "Coding problem", tip: "Tip / trick", concept: "Learn: how to use it" }[it.type] || "Python";
         var hasAnswer = it.type === "mcq" || it.type === "code";
         // Two columns so the full-width tile uses its width instead of
@@ -1495,7 +1539,7 @@
         }
         var body = '<div class="prep-col">' + left + '</div><div class="prep-col">' + right + '</div>';
 
-        el.innerHTML = prepHeadHtml("python", "PYTHON", "#6FB3E6", [typeLabel, it.topic], hasAnswer, st.revealed) +
+        el.innerHTML = prepHeadHtml("python", "PYTHON", "#6FB3E6", [weekChip, typeLabel, it.topic], hasAnswer, st.revealed) +
           '<div class="prep-body">' + body + '</div>' +
           '<div class="prep-keys">Keyboard: <kbd>1</kbd>&ndash;<kbd>4</kbd> answer &middot; <kbd>Space</kbd> show/hide answer &middot; <kbd>N</kbd> next &middot; <kbd>P</kbd> previous &middot; ' +
             'TV remote: arrows to move, <kbd>OK</kbd> to select, <kbd>Back</kbd> to close a stock</div>';
