@@ -7,6 +7,7 @@
 //   { type: "mcq",  topic, q, code, options: [...], answer: <index>, explain }
 //   { type: "tip",  topic, q, code, explain }            // trick to learn
 //   { type: "code", topic, q, code, explain }            // coding problem; code = solution
+//   { type: "concept", ... }  // how-to-use cards: see PYTHON_CONCEPTS at the bottom
 
 var PYTHON_BANK = [
   {
@@ -284,3 +285,214 @@ var PYTHON_BANK = [
     explain: "members is a CLASS attribute, shared by every instance. Per-object state belongs in __init__: self.members = []."
   }
 ];
+
+// CONCEPT cards: how to use a data structure / feature, with context, key
+// points and a runnable example. Shape:
+//   { type: "concept", topic, q, context, points: [...], code }
+// They're interleaved into PYTHON_BANK below (one after every two quiz
+// items) so the rotation mixes learning cards with practice questions.
+var PYTHON_CONCEPTS = [
+  {
+    type: "concept", topic: "list",
+    q: "Lists: the methods you'll use daily",
+    context: "Ordered, mutable, allows duplicates. Your default container, and it doubles as a stack.",
+    points: [
+      "append / pop() at the END are O(1); insert(0, x) / pop(0) at the FRONT are O(n), so use deque for a queue",
+      "'x in nums' scans the whole list (O(n)); use a set if you check membership a lot",
+      "sort() sorts in place and returns None, so never write nums = nums.sort()",
+      "remove(x) deletes only the FIRST match and raises ValueError if x is missing"
+    ],
+    code: "nums = [3, 1, 4]\nnums.append(1)        # [3, 1, 4, 1]\nnums.extend([5, 9])   # [3, 1, 4, 1, 5, 9]\nnums.insert(0, 2)     # [2, 3, 1, 4, 1, 5, 9]\nnums.pop()            # removes & returns 9\nnums.pop(0)           # removes & returns 2\nnums.remove(1)        # first 1 only -> [3, 4, 1, 5]\nprint(nums.index(4), nums.count(1))  # 1 1\nnums.sort()           # [1, 3, 4, 5]\nnums.reverse()        # [5, 4, 3, 1]\nprint(nums)           # [5, 4, 3, 1]"
+  },
+  {
+    type: "concept", topic: "list slicing",
+    q: "Slicing: a[start:stop:step]",
+    context: "Slices never raise IndexError and always return a NEW list. stop is exclusive.",
+    points: [
+      "a[:] or a.copy() is a shallow copy; nested lists are still shared",
+      "Negative indexes count from the end: a[-1] is the last item, a[-3:] the last three",
+      "a[::-1] reverses; a[::2] takes every other item",
+      "Slice assignment can replace a range with a different number of items"
+    ],
+    code: "a = [0, 1, 2, 3, 4, 5]\nprint(a[1:4])    # [1, 2, 3]\nprint(a[::2])    # [0, 2, 4]\nprint(a[-3:])    # [3, 4, 5]\nprint(a[::-1])   # [5, 4, 3, 2, 1, 0]\nb = a[:]         # shallow copy\na[1:3] = ['x']   # replace two items with one\nprint(a)         # [0, 'x', 3, 4, 5]\nprint(len(b))    # 6 (copy unaffected)"
+  },
+  {
+    type: "concept", topic: "dict",
+    q: "Dictionaries: key → value lookups",
+    context: "Hash map with O(1) average get, set and 'in'. Reach for it whenever you look something up by a key.",
+    points: [
+      "d.get(k, default) avoids KeyError; d[k] raises it if k is missing",
+      "Keys must be hashable: str, int and tuple work; list does not",
+      "Insertion order is preserved (Python 3.7+)",
+      "Loop with .items() for (key, value) pairs; use .keys() / .values() when you need just one side"
+    ],
+    code: "d = {'apple': 3}\nd['pear'] = 5               # add / update\nprint(d.get('kiwi', 0))     # 0, no KeyError\nd.setdefault('fig', 0)      # insert only if missing\nd.update({'apple': 4})\nfor k, v in d.items():\n    print(k, v)             # apple 4 / pear 5 / fig 0\ndel d['fig']\nprint('pear' in d)          # True\nprint(list(d))              # ['apple', 'pear']"
+  },
+  {
+    type: "concept", topic: "set",
+    q: "Sets: fast membership and de-duplication",
+    context: "Unordered collection of unique, hashable items. 'x in s' is O(1), versus O(n) for a list.",
+    points: [
+      "Use for 'have I seen this?' checks (visited nodes in BFS/DFS, duplicates)",
+      "& intersection, | union, - difference, ^ symmetric difference",
+      "discard(x) is safe if x is missing; remove(x) raises KeyError",
+      "set() is an empty set; {} is an empty DICT"
+    ],
+    code: "seen = set()\nfor x in [3, 1, 3, 2, 1]:\n    seen.add(x)\nprint(seen)                 # {1, 2, 3}\nprint(2 in seen)            # True, O(1)\na, b = {1, 2, 3}, {2, 3, 4}\nprint(a & b, a | b)         # {2, 3} {1, 2, 3, 4}\nprint(a - b, a ^ b)         # {1} {1, 4}\nseen.discard(99)            # no error\n# dedupe but keep order:\nprint(list(dict.fromkeys([3, 1, 3, 2])))  # [3, 1, 2]"
+  },
+  {
+    type: "concept", topic: "tuple",
+    q: "Tuples and namedtuple",
+    context: "Immutable sequences. Because they're hashable, they can be dict keys or set members, which lists can't.",
+    points: [
+      "Return several values from a function: return total, avg",
+      "Use as composite keys: grid[(row, col)], visited.add((r, c))",
+      "Unpack directly: x, y = point",
+      "namedtuple (or a dataclass) gives readable field names"
+    ],
+    code: "from collections import namedtuple\n\npoint = (3, 4)\nx, y = point\nPoint = namedtuple('Point', 'x y')\np = Point(3, 4)\nprint(p.x, p[1])          # 3 4\nlocs = {(0, 0): 'home'}   # tuple as a dict key\nprint(locs[(0, 0)])       # home\nprint(len(point), point.count(3))  # 2 1"
+  },
+  {
+    type: "concept", topic: "str",
+    q: "String methods you should know cold",
+    context: "Strings are immutable: every method returns a NEW string. Build big strings with ''.join(list), not += in a loop.",
+    points: [
+      "strip / lower / upper / replace return new strings",
+      "split(sep) → list; sep.join(list) → string",
+      "find returns -1 when missing; index raises ValueError",
+      "isalpha / isdigit / isalnum are handy for parsing and validation"
+    ],
+    code: "s = '  Hello, World  '\nt = s.strip()                 # 'Hello, World'\nprint(t.lower(), t.upper())   # hello, world HELLO, WORLD\nprint(t.split(', '))          # ['Hello', 'World']\nprint('-'.join(['a', 'b']))   # a-b\nprint(t.replace('World', 'Py'))  # Hello, Py\nprint(t.startswith('He'), t.find('o'), t.count('l'))  # True 4 3\nprint('abc'.isalpha(), '42'.isdigit())  # True True"
+  },
+  {
+    type: "concept", topic: "stack & queue",
+    q: "Stack (list) vs queue (deque)",
+    context: "Stack = last in, first out (undo, brackets, DFS). Queue = first in, first out (BFS, task processing).",
+    points: [
+      "Stack: list.append() to push, list.pop() to pop, stack[-1] to peek",
+      "Queue: deque.append() to enqueue, deque.popleft() to dequeue, both O(1)",
+      "Never use list.pop(0) as a queue: it's O(n)",
+      "deque(maxlen=N) keeps a rolling window of the last N items"
+    ],
+    code: "stack = []\nstack.append(1); stack.append(2)\nprint(stack.pop())      # 2 (LIFO)\n\nfrom collections import deque\nq = deque()\nq.append('a'); q.append('b')\nprint(q.popleft())      # a (FIFO)\nprint(stack[-1], q[0])  # peek: 1 b\n\nlast3 = deque([1, 2, 3, 4, 5], maxlen=3)\nprint(list(last3))      # [3, 4, 5]"
+  },
+  {
+    type: "concept", topic: "heapq",
+    q: "Heaps with heapq: always get the smallest fast",
+    context: "A min-heap stored in a plain list. Use it for top-k, scheduling by priority, merging sorted lists, and Dijkstra.",
+    points: [
+      "heappush / heappop are O(log n); h[0] peeks the minimum in O(1)",
+      "Python only has a min-heap: push -x for a max-heap",
+      "Push (priority, item) tuples to order by priority",
+      "heapify(list) turns an existing list into a heap in O(n)"
+    ],
+    code: "import heapq\n\nh = []\nfor x in [5, 1, 8, 3]:\n    heapq.heappush(h, x)\nprint(heapq.heappop(h))   # 1, smallest first\nprint(h[0])               # 3, peek\nprint(heapq.nsmallest(2, [5, 1, 8, 3]))  # [1, 3]\n\nmaxh = []\nfor x in [5, 1, 8]:\n    heapq.heappush(maxh, -x)   # negate for max-heap\nprint(-heapq.heappop(maxh))    # 8\n\ntasks = [(2, 'write'), (1, 'test')]\nheapq.heapify(tasks)\nprint(heapq.heappop(tasks))    # (1, 'test')"
+  },
+  {
+    type: "concept", topic: "Counter",
+    q: "Counter: counting made trivial",
+    context: "A dict subclass that counts hashable items. Missing keys return 0 instead of raising KeyError.",
+    points: [
+      "Counter(iterable) counts everything in one line",
+      "most_common(k) returns the top-k (item, count) pairs",
+      "Counter(a) == Counter(b) is a one-line anagram check",
+      "Supports +, - and update() for merging counts"
+    ],
+    code: "from collections import Counter\n\nc = Counter('mississippi')\nprint(c['s'], c['z'])        # 4 0\nprint(c.most_common(2))      # [('i', 4), ('s', 4)]\nc.update('ss')\nprint(c['s'])                # 6\nprint(Counter('abc') == Counter('cab'))  # True"
+  },
+  {
+    type: "concept", topic: "functions",
+    q: "Functions: arguments, defaults, *args, **kwargs",
+    context: "Clean signatures make code easy to read and test. Interviewers notice keyword-only args and sensible defaults.",
+    points: [
+      "Return several values as a tuple and unpack them at the call site",
+      "A bare * makes the arguments after it keyword-only (precision=...)",
+      "*args collects extra positional args into a tuple; **kwargs collects keyword args into a dict",
+      "Never use a mutable default ([] or {}); use None and create it inside"
+    ],
+    code: "def stats(nums, *, precision=2):\n    total = sum(nums)\n    return total, round(total / len(nums), precision)\n\nt, avg = stats([1, 2, 4])\nprint(t, avg)        # 7 2.33\n\ndef log(msg, *tags, **meta):\n    print(msg, tags, meta)\n\nlog('deploy', 'prod', 'eu', build=42)\n# deploy ('prod', 'eu') {'build': 42}"
+  },
+  {
+    type: "concept", topic: "key functions",
+    q: "sorted, min, max with key= (and lambda / map / filter)",
+    context: "key= tells Python WHAT to compare. It works the same way in sorted, min, max and heapq.nlargest.",
+    points: [
+      "key=len, key=str.lower, key=lambda p: p[1]: any one-argument function works",
+      "Return a tuple from key to sort by several fields",
+      "map and filter return lazy iterators; wrap them in list() to see the values",
+      "A comprehension is usually more readable than map + filter"
+    ],
+    code: "words = ['kiwi', 'fig', 'banana']\nprint(sorted(words, key=len))     # ['fig', 'kiwi', 'banana']\nprint(max(words, key=len))        # banana\nprint(list(map(str.upper, words)))  # ['KIWI', 'FIG', 'BANANA']\nprint(list(filter(lambda w: 'i' in w, words)))  # ['kiwi', 'fig']\nprint([w.upper() for w in words if 'i' in w])   # ['KIWI', 'FIG']"
+  },
+  {
+    type: "concept", topic: "comprehensions",
+    q: "Dict, set and nested comprehensions",
+    context: "The same [expr for x in it if cond] pattern builds dicts and sets too, and nested loops read left to right.",
+    points: [
+      "{k: v for ...} builds a dict; {x for ...} builds a set",
+      "[x for row in matrix for x in row] flattens: the outer loop comes first",
+      "zip(*matrix) transposes rows into columns",
+      "Swap keys and values with {v: k for k, v in d.items()}"
+    ],
+    code: "nums = [1, 2, 3, 4]\nsquares = {n: n * n for n in nums}       # {1: 1, 2: 4, 3: 9, 4: 16}\nevens = {n for n in nums if n % 2 == 0}  # {2, 4}\nmatrix = [[1, 2], [3, 4]]\nflat = [x for row in matrix for x in row]          # [1, 2, 3, 4]\ntransposed = [list(c) for c in zip(*matrix)]       # [[1, 3], [2, 4]]\ninverted = {v: k for k, v in squares.items()}\nprint(evens, flat, transposed, inverted[9])  # {2, 4} [1, 2, 3, 4] [[1, 3], [2, 4]] 3"
+  },
+  {
+    type: "concept", topic: "choosing a structure",
+    q: "Which data structure? Big-O cheat sheet",
+    context: "Most interview optimizations come down to swapping a list scan for a dict or set lookup.",
+    points: [
+      "Look up by key → dict. 'Seen it?' or de-duplicate → set",
+      "Ordered with index access → list. Queue / BFS → deque",
+      "Repeatedly need the smallest or largest → heapq. Counting → Counter",
+      "Sorted data plus searching → bisect (binary search, O(log n))"
+    ],
+    code: "# Operation           list        dict / set   deque\n# get by index/key    O(1)        O(1)         O(n)\n# x in container      O(n)        O(1)         O(n)\n# append / add        O(1)        O(1)         O(1)\n# pop from end        O(1)        -            O(1)\n# pop/insert front    O(n)        -            O(1)\n# sort                O(n log n)\n\n# heapq: push/pop O(log n), peek O(1)\n# bisect on a sorted list: O(log n) search"
+  },
+  {
+    type: "concept", topic: "dataclass",
+    q: "@dataclass: classes without boilerplate",
+    context: "Auto-generates __init__, __repr__ and __eq__. Great for modelling records such as releases, incidents and orders.",
+    points: [
+      "Declare fields with type hints; defaults go after required fields",
+      "Use field(default_factory=list) for mutable defaults",
+      "frozen=True makes instances immutable and hashable",
+      "Prints nicely and compares by value out of the box"
+    ],
+    code: "from dataclasses import dataclass, field\n\n@dataclass\nclass Release:\n    version: str\n    services: list = field(default_factory=list)\n    healthy: bool = True\n\nr = Release('2.4.0')\nr.services.append('auth')\nprint(r)   # Release(version='2.4.0', services=['auth'], healthy=True)\nprint(r == Release('2.4.0', ['auth']))  # True"
+  },
+  {
+    type: "concept", topic: "itertools",
+    q: "itertools: combinations, permutations, prefix sums",
+    context: "Ready-made iterator tools that replace nested loops in brute-force and counting problems.",
+    points: [
+      "combinations(items, k): choose k without regard to order",
+      "permutations(items): every ordering (n! of them, so they grow fast)",
+      "product(..., repeat=n) replaces nested for-loops",
+      "accumulate gives prefix sums; groupby groups consecutive runs"
+    ],
+    code: "from itertools import combinations, permutations, product, accumulate, groupby\n\nprint(list(combinations([1, 2, 3], 2)))  # [(1, 2), (1, 3), (2, 3)]\nprint(len(list(permutations('abc'))))    # 6\nprint(list(product([0, 1], repeat=2)))   # [(0, 0), (0, 1), (1, 0), (1, 1)]\nprint(list(accumulate([1, 2, 3, 4])))    # [1, 3, 6, 10]\nprint([(k, len(list(g))) for k, g in groupby('aaabbc')])  # [('a', 3), ('b', 2), ('c', 1)]"
+  },
+  {
+    type: "concept", topic: "recursion",
+    q: "Recursion and memoization with @lru_cache",
+    context: "Recursion = base case + smaller sub-problem. Add a cache when the same sub-problems repeat (dynamic programming).",
+    points: [
+      "Always write the base case first",
+      "@lru_cache(maxsize=None) memoizes; plain recursive fib(50) would take forever",
+      "Python's default recursion limit is about 1000 frames; use iteration for deep inputs",
+      "Tree and graph problems are naturally recursive (depth, paths, DFS)"
+    ],
+    code: "from functools import lru_cache\n\n@lru_cache(maxsize=None)\ndef fib(n):\n    return n if n < 2 else fib(n - 1) + fib(n - 2)\n\nprint(fib(50))   # 12586269025\n\ndef depth(tree):  # tree as nested dicts\n    return 1 + max((depth(c) for c in tree.values()), default=0)\n\nprint(depth({'a': {'b': {}}, 'c': {}}))  # 3"
+  }
+];
+
+// Interleave: two quiz items, then one concept card, repeated.
+PYTHON_BANK = (function (quiz, concepts) {
+  var out = [], ci = 0;
+  for (var i = 0; i < quiz.length; i++) {
+    out.push(quiz[i]);
+    if (i % 2 === 1 && ci < concepts.length) out.push(concepts[ci++]);
+  }
+  while (ci < concepts.length) out.push(concepts[ci++]);
+  return out;
+})(PYTHON_BANK, PYTHON_CONCEPTS);

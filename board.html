@@ -258,6 +258,10 @@
         grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
       }
       .prep-col { min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-right: 4px; }
+      .prep-context { font-size: 17px; line-height: 1.45; color: var(--text-primary); background: #12202B; border-left: 3px solid #6FB3E6; border-radius: 6px; padding: 9px 13px; }
+      .prep-points { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 7px; font-size: 16px; line-height: 1.45; color: var(--text-secondary); }
+      .prep-points li::marker { color: #6FB3E6; }
+      .prep-example-label { font-size: 11px; font-weight: 800; letter-spacing: 1.2px; color: var(--text-muted); }
       .prep-waiting { font-size: 15px; color: var(--text-muted); border: 1px dashed #2E2D29; border-radius: 9px; padding: 14px; }
       @media (max-width: 1100px) { .prep-body { grid-template-columns: 1fr; } }
       .prep-q { font-size: 26px; font-weight: 700; line-height: 1.35; color: var(--text-primary); }
@@ -403,6 +407,8 @@
         .prep-keys { font-size: 15px; }
         .prep-keys kbd { font-size: 14px; padding: 1px 7px; }
         .prep-result { font-size: 21px; }
+        .prep-context { font-size: 20px; }
+        .prep-points { font-size: 19px; }
         .prep-option { font-size: 20px; padding: 13px 16px; }
       }
 
@@ -432,6 +438,10 @@
         .prep-option { font-size: 14px; padding: 7px 10px; }
         .prep-explain { font-size: 15px; }
         .prep-tip { font-size: 13.5px; }
+        .prep-context { font-size: 14.5px; padding: 6px 10px; }
+        .prep-keys { display: none; }   /* shortcuts stay in the PYTHON label's tooltip */
+        .prep-code { font-size: 13px; line-height: 1.4; }
+        .prep-points { font-size: 14px; gap: 4px; }
         .flash-ticker { padding: 8px 0; }
         .flash-ticker-live { padding: 0 20px; }
         .flash-ticker-live-label { font-size: 15px; }
@@ -488,7 +498,7 @@
       <div class="flash-ticker" id="flashTicker"></div>
 
       <div class="board-footer">
-        Tap a tile for the full breakdown &middot; prices refresh every 10 minutes, all watchlist stocks scroll continuously (hover to pause) &middot; Python question changes every 10 minutes, answers reveal at the halfway mark &middot; gold glow = signal changed since last poll
+        Tap a tile for the full breakdown &middot; prices refresh every 10 minutes, all watchlist stocks scroll at the news-ticker speed (hover to pause) &middot; Python question changes every 10 minutes, answers reveal at the halfway mark &middot; gold glow = signal changed since last poll
       </div>
     </div>
 
@@ -856,8 +866,37 @@
       }
 
       // ---- Continuously scrolling stock row ----
-      var MARQUEE_PX_PER_SEC = 22;   // lower = slower
+      // The stock row scrolls at the SAME on-screen speed as the LIVE MARKET
+      // NEWS ticker above it (measured from that ticker's width and CSS
+      // duration). The fallback is used only until the news has loaded.
+      var MARQUEE_FALLBACK_PX_PER_SEC = 22;
       var marqueeSymbols = null;     // symbols the track was last built with
+
+      function newsTickerPxPerSec() {
+        var track = document.querySelector("#newsTicker .news-ticker-track");
+        if (!track) return null;
+        var dur = parseFloat(getComputedStyle(track).animationDuration);
+        var pxps = (track.scrollWidth / 2) / dur;
+        return isFinite(pxps) && pxps > 0 ? pxps : null;
+      }
+
+      // Sets the stock row's loop duration so its px/second matches the
+      // news ticker. Keeps the current scroll position when the speed
+      // changes, so the row doesn't jump.
+      function syncStockSpeed() {
+        var grid = document.getElementById("grid");
+        if (!grid || !grid.children.length) return;
+        var pxps = newsTickerPxPerSec() || MARQUEE_FALLBACK_PX_PER_SEC;
+        var newDur = Math.max(20, (grid.scrollWidth / 2) / pxps);
+        var anim = grid.getAnimations ? grid.getAnimations()[0] : null;
+        var oldDur = parseFloat(getComputedStyle(grid).animationDuration);
+        var frac = anim && anim.currentTime !== null && oldDur > 0 ? ((anim.currentTime / 1000) % oldDur) / oldDur : 0;
+        grid.style.setProperty("--marquee-duration", newDur.toFixed(1) + "s");
+        var anim2 = grid.getAnimations ? grid.getAnimations()[0] : null;
+        if (anim2) anim2.currentTime = frac * newDur * 1000;
+      }
+      var resizeTimer = null;
+      window.addEventListener("resize", function () { clearTimeout(resizeTimer); resizeTimer = setTimeout(syncStockSpeed, 300); });
 
       function placeholderTile(sym) {
         return '<div class="tile" data-symbol="' + sym + '"><div class="tile-head"><span class="tile-ticker">' + sym + '</span></div><div class="tile-error">No data</div></div>';
@@ -877,8 +916,7 @@
           var once = TICKERS.map(tileFor).join("");
           grid.innerHTML = once + once;
           marqueeSymbols = key;
-          var half = grid.scrollWidth / 2;
-          grid.style.setProperty("--marquee-duration", Math.max(60, Math.round(half / MARQUEE_PX_PER_SEC)) + "s");
+          syncStockSpeed();
         } else {
           // Later refreshes: swap each tile in place so the scroll animation
           // keeps running instead of restarting from the first ticker.
@@ -1247,6 +1285,7 @@
         var sep = '<span class="news-ticker-sep">●</span>';
         var once = lastFlashItems.map(flashTickerItemHtml).join(sep);
         el.innerHTML = LIVE_BADGE_HTML + '<div class="news-ticker-viewport"><div class="news-ticker-track">' + once + sep + once + sep + '</div></div>';
+        if (typeof syncStockSpeed === "function") syncStockSpeed();
       }
 
       // Both tickers fully replace their track element on render, which
@@ -1398,7 +1437,7 @@
         var scoreHtml = prepScore.answered
           ? '<span class="prep-score" title="Multiple-choice score in this browser">Score ' + prepScore.correct + '/' + prepScore.answered + '</span>' : '';
         return '<div class="prep-head">' +
-          '<div class="prep-title"><span class="prep-label" style="color:' + color + ';">' + label + '</span>' +
+          '<div class="prep-title"><span class="prep-label" style="color:' + color + ';" title="Keys: 1-4 answer, Space show/hide, N next, P previous. TV remote: arrows + OK, Back closes a stock.">' + label + '</span>' +
             chips.map(function (c) { return '<span class="prep-chip">' + escapeHtml(c) + '</span>'; }).join("") + scoreHtml +
           '</div>' +
           '<div class="prep-controls"><span class="prep-countdown">' + prepCountdownText() + '</span>' +
@@ -1414,8 +1453,8 @@
         var pick = prepItem(typeof PYTHON_BANK !== "undefined" ? PYTHON_BANK : null, "python");
         if (!pick) { el.innerHTML = '<div class="tile-error">Python question bank not loaded</div>'; return; }
         var it = pick.item, st = prepState.python;
-        var typeLabel = it.type === "mcq" ? "What's the output?" : (it.type === "code" ? "Coding problem" : "Tip / trick");
-        var hasAnswer = it.type !== "tip";
+        var typeLabel = { mcq: "What's the output?", code: "Coding problem", tip: "Tip / trick", concept: "Learn: how to use it" }[it.type] || "Python";
+        var hasAnswer = it.type === "mcq" || it.type === "code";
         // Two columns so the full-width tile uses its width instead of
         // its height: question/code on the left, options/answer on the right.
         var q = '<div class="prep-q">' + escapeHtml(it.q) + '</div>';
@@ -1445,6 +1484,11 @@
           right += st.revealed
             ? '<pre class="prep-code">' + codeHtml(it.code) + '</pre><div class="prep-explain">' + escapeHtml(it.explain) + '</div>'
             : waiting;
+        } else if (it.type === "concept") {
+          // Learning card: when/why on the left, a runnable example on the right.
+          left += '<div class="prep-context">' + escapeHtml(it.context) + '</div>' +
+            '<ul class="prep-points">' + (it.points || []).map(function (pt) { return '<li>' + escapeHtml(pt) + '</li>'; }).join("") + '</ul>';
+          right += '<div class="prep-example-label">EXAMPLE</div><pre class="prep-code">' + codeHtml(it.code) + '</pre>';
         } else {
           left += '<pre class="prep-code">' + codeHtml(it.code) + '</pre>';
           right += '<div class="prep-explain">' + escapeHtml(it.explain) + '</div>';
