@@ -5,9 +5,10 @@
 // different origin and are explicitly excluded below) — the whole point of
 // this board is live data, so anything stale there would be worse than
 // useless.
-const CACHE_NAME = "live-board-shell-v1";
+const CACHE_NAME = "live-board-shell-v2";
 const APP_SHELL = [
   "board.html",
+  "assets/prep-bank.js",
   "manifest.json",
   "assets/icon-192.png",
   "assets/icon-512.png",
