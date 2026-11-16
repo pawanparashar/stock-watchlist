@@ -210,17 +210,73 @@
          with no dead space below the grid, rather than sizing to content
          and leaving a gap above the footer. Falls back to a flowing grid
          at narrow widths (a laptop browser testing this page). */
+      /* One slow, continuously scrolling row of EVERY ticker (the full
+         watchlist superset — see TICKERS). The track holds two copies of
+         the tiles so it loops seamlessly at -50% translateX, same trick as
+         the news tickers. Tiles use margin-right (not gap) so both halves
+         are exactly equal width. Price refreshes update tiles IN PLACE, so
+         the scroll never jumps back to the start. Hover (or an open detail
+         overlay) pauses it. */
+      .stock-marquee { flex-shrink: 0; overflow: hidden; }
       #grid {
+        display: flex;
+        width: max-content;
+        animation: tickerScroll var(--marquee-duration, 600s) linear infinite;
+      }
+      #grid > .tile { width: 360px; flex-shrink: 0; margin-right: 14px; }
+      .stock-marquee:hover #grid, body:has(#overlay.open) #grid { animation-play-state: paused; }
+
+      /* ---- Interview-prep tiles (Python + Behavioral) ---- */
+      #prep {
         flex: 1;
         min-height: 0;
         display: grid;
-        grid-template-columns: repeat(5, minmax(0, 1fr));
-        grid-template-rows: repeat(2, 1fr);
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 14px;
       }
-      @media (max-width: 1100px) {
-        #grid { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); grid-template-rows: none; }
+      @media (max-width: 1100px) { #prep { grid-template-columns: 1fr; } }
+      .prep-tile {
+        background: var(--tile-bg);
+        border: 1px solid var(--tile-border);
+        border-radius: 12px;
+        padding: 18px 22px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        min-height: 0;
+        overflow: hidden;
       }
+      .prep-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-shrink: 0; }
+      .prep-title { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+      .prep-label { font-size: 16px; font-weight: 800; letter-spacing: 1.2px; }
+      .prep-chip { font-size: 13px; font-weight: 700; padding: 3px 10px; border-radius: 10px; background: #221F1A; color: var(--text-secondary); }
+      .prep-controls { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text-muted); white-space: nowrap; }
+      .prep-controls button {
+        font-family: inherit; font-size: 11px; background: #181816; color: var(--text-secondary);
+        border: 1px solid #332F27; border-radius: 6px; padding: 4px 10px; cursor: pointer;
+      }
+      .prep-controls button:hover { color: var(--text-primary); border-color: var(--tile-border-hover); }
+      .prep-body { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-right: 4px; }
+      .prep-q { font-size: 26px; font-weight: 700; line-height: 1.35; color: var(--text-primary); }
+      .prep-code {
+        margin: 0; background: #0C0C0B; border: 1px solid #23221F; border-radius: 9px;
+        padding: 12px 14px; font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 17px;
+        line-height: 1.5; color: #E6E3D8; white-space: pre; overflow-x: auto;
+      }
+      .prep-code .cm { color: #8C8A82; font-style: italic; }
+      .prep-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+      .prep-option {
+        font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 17px; padding: 10px 14px;
+        border-radius: 8px; border: 1px solid #2E2D29; background: #181816; color: var(--text-secondary);
+      }
+      .prep-option.correct { border-color: #2F5E1D; background: #16240D; color: #B7DDAC; font-weight: 700; }
+      .prep-answer { border-top: 1px dashed #2E2D29; padding-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+      .prep-answer.hidden { display: none; }
+      .prep-explain { font-size: 18px; line-height: 1.5; color: var(--text-secondary); }
+      .prep-star { display: grid; grid-template-columns: auto 1fr; gap: 8px 14px; font-size: 18px; line-height: 1.45; }
+      .prep-star b { color: #E8B85C; font-size: 16px; letter-spacing: 0.5px; padding-top: 2px; }
+      .prep-star span { color: var(--text-secondary); }
+      .prep-tip { font-size: 16px; line-height: 1.45; color: #D9A441; background: #1D180D; border-radius: 8px; padding: 8px 12px; }
 
       .tile {
         position: relative;
@@ -348,14 +404,21 @@
 
       <div class="macro-strip" id="macroStrip"></div>
 
-      <div id="grid">
-        <div class="empty-state">Loading board&hellip;</div>
+      <div class="stock-marquee" id="stockRow">
+        <div id="grid">
+          <div class="empty-state">Loading board&hellip;</div>
+        </div>
+      </div>
+
+      <div id="prep">
+        <div class="prep-tile" id="prepPython"></div>
+        <div class="prep-tile" id="prepBehavioral"></div>
       </div>
 
       <div class="flash-ticker" id="flashTicker"></div>
 
       <div class="board-footer">
-        Tap a tile for the full breakdown &middot; refreshes automatically every 2 minutes &middot; gold glow = signal changed since last poll
+        Tap a tile for the full breakdown &middot; prices refresh every 2 minutes, all watchlist stocks scroll continuously (hover to pause) &middot; interview questions change every 10 minutes, answers reveal at the halfway mark &middot; gold glow = signal changed since last poll
       </div>
     </div>
 
@@ -363,9 +426,16 @@
       <div id="detailPanel"></div>
     </div>
 
+    <script src="assets/prep-bank.js"></script>
     <script>
       // ---- Configuration ----
-      var TICKERS = ["TSLA","SPCX","GOOGL","META","MSFT","NVDA","AMZN","AAPL","AMD","IREN"];
+      // Superset of every watchlist in the repo: the board's original 10
+      // first, then the rest of index.html's TICKERS (which already contains
+      // everything in trend.html). Keep this in sync if you add a ticker on
+      // the watchlist page.
+      var TICKERS = ["TSLA","SPCX","GOOGL","META","MSFT","NVDA","AMZN","AAPL","AMD","IREN",
+        "GOOG","AVGO","MU","INTC","CAT","NFLX","CRM","NOW","PANW","DOCU",
+        "PLTR","NBIS","SOFI","BABA","WMT","FIG","COST","UBER"];
       var WORKER_URL = "https://stock-watchlist-proxy.pawan227.workers.dev/";
       // 2 min: comfortably safe on every limit involved (Alpaca Basic is
       // 200 calls/min, this uses ~0.5/min batched; Cloudflare's free tier
@@ -713,12 +783,33 @@
         );
       }
 
+      // ---- Continuously scrolling stock row ----
+      var MARQUEE_PX_PER_SEC = 22;   // lower = slower
+      var marqueeSymbols = null;     // symbols the track was last built with
+
+      function placeholderTile(sym) {
+        return '<div class="tile" data-symbol="' + sym + '"><div class="tile-head"><span class="tile-ticker">' + sym + '</span></div><div class="tile-error">No data</div></div>';
+      }
+      function tileFor(sym) { return lastData[sym] ? tileHtml(lastData[sym]) : placeholderTile(sym); }
+
       function render() {
-        var html = TICKERS.map(function (sym) {
-          var row = lastData[sym];
-          return row ? tileHtml(row) : '<div class="tile" data-symbol="' + sym + '"><div class="tile-head"><span class="tile-ticker">' + sym + '</span></div><div class="tile-error">No data</div></div>';
-        }).join("");
-        document.getElementById("grid").innerHTML = html;
+        var grid = document.getElementById("grid");
+        var key = TICKERS.join(",");
+        if (marqueeSymbols !== key) {
+          // First render: build the track (two identical copies for the loop).
+          var once = TICKERS.map(tileFor).join("");
+          grid.innerHTML = once + once;
+          marqueeSymbols = key;
+          var half = grid.scrollWidth / 2;
+          grid.style.setProperty("--marquee-duration", Math.max(60, Math.round(half / MARQUEE_PX_PER_SEC)) + "s");
+        } else {
+          // Later refreshes: swap each tile in place so the scroll animation
+          // keeps running instead of restarting from the first ticker.
+          TICKERS.forEach(function (sym) {
+            var html = tileFor(sym);
+            grid.querySelectorAll('.tile[data-symbol="' + sym + '"]').forEach(function (node) { node.outerHTML = html; });
+          });
+        }
         renderBreadthSummary();
       }
 
@@ -1160,7 +1251,159 @@
           });
       }
 
+      // ---- Interview-prep tiles ----
+      // Question banks live in assets/prep-bank.js (PYTHON_BANK,
+      // BEHAVIORAL_BANK). Each tile shows one item per PREP_ROTATE_MS slot,
+      // picked from the wall-clock time, so every screen shows the same
+      // question and a reload doesn't skip ahead. The answer stays hidden
+      // until halfway through the slot (time to think first), or until you
+      // click "Show answer". "Next" moves forward manually.
+      var PREP_ROTATE_MS = 10 * 60 * 1000;
+      var PREP_REVEAL_AFTER_MS = 5 * 60 * 1000;
+      var prepState = {
+        python: { offset: 0, revealed: false, lastKey: null },
+        behavioral: { offset: 0, revealed: false, lastKey: null }
+      };
+
+      function prepSlot() { return Math.floor(Date.now() / PREP_ROTATE_MS); }
+      function prepSlotElapsed() { return Date.now() % PREP_ROTATE_MS; }
+
+      // Escapes the code, then dims '# comment' tails (ignoring a # inside quotes).
+      function codeHtml(code) {
+        return code.split("\n").map(function (line) {
+          var inS = null, cut = -1;
+          for (var i = 0; i < line.length; i++) {
+            var ch = line[i];
+            if (inS) { if (ch === inS) inS = null; }
+            else if (ch === "'" || ch === '"') inS = ch;
+            else if (ch === "#") { cut = i; break; }
+          }
+          if (cut < 0) return escapeHtml(line);
+          return escapeHtml(line.slice(0, cut)) + '<span class="cm">' + escapeHtml(line.slice(cut)) + '</span>';
+        }).join("\n");
+      }
+
+      function prepItem(bank, kind) {
+        if (!bank || !bank.length) return null;
+        var idx = ((prepSlot() + prepState[kind].offset) % bank.length + bank.length) % bank.length;
+        return { item: bank[idx], idx: idx };
+      }
+
+      function prepCountdownText() {
+        var left = Math.ceil((PREP_ROTATE_MS - prepSlotElapsed()) / 1000);
+        var m = Math.floor(left / 60), s = left % 60;
+        return "New in " + m + ":" + (s < 10 ? "0" : "") + s;
+      }
+
+      function prepHeadHtml(kind, label, color, chips, hasAnswer, revealed) {
+        return '<div class="prep-head">' +
+          '<div class="prep-title"><span class="prep-label" style="color:' + color + ';">' + label + '</span>' +
+            chips.map(function (c) { return '<span class="prep-chip">' + escapeHtml(c) + '</span>'; }).join("") +
+          '</div>' +
+          '<div class="prep-controls"><span class="prep-countdown">' + prepCountdownText() + '</span>' +
+            (hasAnswer ? '<button onclick="togglePrepAnswer(\'' + kind + '\')">' + (revealed ? 'Hide answer' : 'Show answer') + '</button>' : '') +
+            '<button onclick="nextPrep(\'' + kind + '\')">Next &rsaquo;</button>' +
+          '</div>' +
+        '</div>';
+      }
+
+      function renderPython() {
+        var el = document.getElementById("prepPython");
+        var pick = prepItem(typeof PYTHON_BANK !== "undefined" ? PYTHON_BANK : null, "python");
+        if (!pick) { el.innerHTML = '<div class="tile-error">Python question bank not loaded</div>'; return; }
+        var it = pick.item, st = prepState.python;
+        var typeLabel = it.type === "mcq" ? "What's the output?" : (it.type === "code" ? "Coding problem" : "Tip / trick");
+        var hasAnswer = it.type !== "tip";
+        var body = '<div class="prep-q">' + escapeHtml(it.q) + '</div>';
+
+        if (it.type === "mcq") {
+          body += '<pre class="prep-code">' + codeHtml(it.code) + '</pre>';
+          body += '<div class="prep-options">' + it.options.map(function (o, i) {
+            return '<div class="prep-option' + (st.revealed && i === it.answer ? ' correct' : '') + '">' +
+              String.fromCharCode(65 + i) + ') ' + escapeHtml(o) + '</div>';
+          }).join("") + '</div>';
+          body += '<div class="prep-answer' + (st.revealed ? '' : ' hidden') + '"><div class="prep-explain"><b>Answer ' +
+            String.fromCharCode(65 + it.answer) + '.</b> ' + escapeHtml(it.explain) + '</div></div>';
+        } else if (it.type === "code") {
+          body += '<div class="prep-tip">Try it in your head or on paper first, then reveal the solution.</div>';
+          body += '<div class="prep-answer' + (st.revealed ? '' : ' hidden') + '">' +
+            '<pre class="prep-code">' + codeHtml(it.code) + '</pre>' +
+            '<div class="prep-explain">' + escapeHtml(it.explain) + '</div></div>';
+        } else {
+          body += '<pre class="prep-code">' + codeHtml(it.code) + '</pre>';
+          body += '<div class="prep-explain">' + escapeHtml(it.explain) + '</div>';
+        }
+
+        el.innerHTML = prepHeadHtml("python", "PYTHON", "#6FB3E6", [typeLabel, it.topic], hasAnswer, st.revealed) +
+          '<div class="prep-body">' + body + '</div>';
+      }
+
+      function renderBehavioral() {
+        var el = document.getElementById("prepBehavioral");
+        var pick = prepItem(typeof BEHAVIORAL_BANK !== "undefined" ? BEHAVIORAL_BANK : null, "behavioral");
+        if (!pick) { el.innerHTML = '<div class="tile-error">Behavioral question bank not loaded</div>'; return; }
+        var it = pick.item, st = prepState.behavioral;
+        var star = it.star;
+        var body = '<div class="prep-q">&ldquo;' + escapeHtml(it.q) + '&rdquo;</div>' +
+          '<div class="prep-tip">' + escapeHtml(it.tip) + '</div>' +
+          '<div class="prep-answer' + (st.revealed ? '' : ' hidden') + '">' +
+            '<div class="prep-explain" style="font-size:12px;color:var(--text-muted);">Sample STAR answer. Replace it with your own real story and numbers.</div>' +
+            '<div class="prep-star">' +
+              '<b>S</b><span>' + escapeHtml(star.s) + '</span>' +
+              '<b>T</b><span>' + escapeHtml(star.t) + '</span>' +
+              '<b>A</b><span>' + escapeHtml(star.a) + '</span>' +
+              '<b>R</b><span>' + escapeHtml(star.r) + '</span>' +
+            '</div>' +
+          '</div>';
+        el.innerHTML = prepHeadHtml("behavioral", "BEHAVIORAL", "#E8B85C", [it.theme], true, st.revealed) +
+          '<div class="prep-body">' + body + '</div>';
+      }
+
+      function renderPrep() { renderPython(); renderBehavioral(); }
+
+      function togglePrepAnswer(kind) {
+        prepState[kind].revealed = !prepState[kind].revealed;
+        prepState[kind].manualReveal = true;
+        renderPrep();
+      }
+
+      function nextPrep(kind) {
+        prepState[kind].offset += 1;
+        prepState[kind].revealed = false;
+        prepState[kind].manualReveal = true;   // don't auto-reveal a question you just skipped to
+        renderPrep();
+      }
+
+      // Runs every second: rotates to the next question at each 10-minute
+      // boundary, auto-reveals at the halfway mark, and updates countdowns
+      // without re-rendering (so scrolling inside a tile isn't reset).
+      var lastPrepSlot = prepSlot();
+      function tickPrep() {
+        var slot = prepSlot();
+        if (slot !== lastPrepSlot) {
+          lastPrepSlot = slot;
+          ["python", "behavioral"].forEach(function (k) {
+            prepState[k].revealed = false; prepState[k].manualReveal = false;
+          });
+          renderPrep();
+          return;
+        }
+        var changed = false;
+        if (prepSlotElapsed() >= PREP_REVEAL_AFTER_MS) {
+          ["python", "behavioral"].forEach(function (k) {
+            if (!prepState[k].revealed && !prepState[k].manualReveal) { prepState[k].revealed = true; changed = true; }
+          });
+        }
+        if (changed) { renderPrep(); return; }
+        var text = prepCountdownText();
+        document.querySelectorAll(".prep-countdown").forEach(function (n) { n.textContent = text; });
+      }
+
       // ---- Boot ----
+      // If you open the board after the halfway mark, the answer is already showing.
+      if (prepSlotElapsed() >= PREP_REVEAL_AFTER_MS) { prepState.python.revealed = true; prepState.behavioral.revealed = true; }
+      renderPrep();
+      setInterval(tickPrep, 1000);
       renderStatePill();
       renderFlashNews();
       renderBroadTicker();
