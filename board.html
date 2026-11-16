@@ -210,31 +210,21 @@
          with no dead space below the grid, rather than sizing to content
          and leaving a gap above the footer. Falls back to a flowing grid
          at narrow widths (a laptop browser testing this page). */
-      /* One row of 5 stock tiles that rotates through every ticker in
-         TICKERS (page 1 = first 5, page 2 = next 5, ...) every
-         STOCK_ROTATE_MS. Hovering the row pauses rotation; the dots/arrows
-         in the pager jump between pages. The freed-up second row now holds
-         the two interview-prep tiles (#prep). */
-      .stock-row { flex-shrink: 0; display: flex; flex-direction: column; gap: 6px; }
-      .stock-pager { display: flex; align-items: center; justify-content: flex-end; gap: 10px; font-size: 11px; color: var(--text-muted); }
-      .stock-pager button {
-        font-family: inherit; font-size: 11px; background: #181816; color: var(--text-secondary);
-        border: 1px solid #332F27; border-radius: 6px; padding: 2px 9px; cursor: pointer;
-      }
-      .pager-dot { width: 8px; height: 8px; border-radius: 50%; background: #3A3934; display: inline-block; cursor: pointer; }
-      .pager-dot.active { background: #F5C542; }
-      .pager-progress { width: 90px; height: 3px; border-radius: 2px; background: #2A2A26; overflow: hidden; }
-      .pager-progress-fill { height: 100%; background: #9C6B0A; width: 0%; }
+      /* One slow, continuously scrolling row of EVERY ticker (the full
+         watchlist superset — see TICKERS). The track holds two copies of
+         the tiles so it loops seamlessly at -50% translateX, same trick as
+         the news tickers. Tiles use margin-right (not gap) so both halves
+         are exactly equal width. Price refreshes update tiles IN PLACE, so
+         the scroll never jumps back to the start. Hover (or an open detail
+         overlay) pauses it. */
+      .stock-marquee { flex-shrink: 0; overflow: hidden; }
       #grid {
-        display: grid;
-        grid-template-columns: repeat(5, minmax(0, 1fr));
-        gap: 14px;
-        transition: opacity 0.35s ease;
+        display: flex;
+        width: max-content;
+        animation: tickerScroll var(--marquee-duration, 600s) linear infinite;
       }
-      #grid.fading { opacity: 0; }
-      @media (max-width: 1100px) {
-        #grid { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
-      }
+      #grid > .tile { width: 360px; flex-shrink: 0; margin-right: 14px; }
+      .stock-marquee:hover #grid, body:has(#overlay.open) #grid { animation-play-state: paused; }
 
       /* ---- Interview-prep tiles (Python + Behavioral) ---- */
       #prep {
@@ -414,11 +404,10 @@
 
       <div class="macro-strip" id="macroStrip"></div>
 
-      <div class="stock-row" id="stockRow">
+      <div class="stock-marquee" id="stockRow">
         <div id="grid">
           <div class="empty-state">Loading board&hellip;</div>
         </div>
-        <div class="stock-pager" id="stockPager"></div>
       </div>
 
       <div id="prep">
@@ -429,7 +418,7 @@
       <div class="flash-ticker" id="flashTicker"></div>
 
       <div class="board-footer">
-        Tap a tile for the full breakdown &middot; prices refresh every 2 minutes, stocks rotate every 15 seconds (hover to pause) &middot; interview questions change every 10 minutes, answers reveal at the halfway mark &middot; gold glow = signal changed since last poll
+        Tap a tile for the full breakdown &middot; prices refresh every 2 minutes, all watchlist stocks scroll continuously (hover to pause) &middot; interview questions change every 10 minutes, answers reveal at the halfway mark &middot; gold glow = signal changed since last poll
       </div>
     </div>
 
@@ -440,7 +429,13 @@
     <script src="assets/prep-bank.js"></script>
     <script>
       // ---- Configuration ----
-      var TICKERS = ["TSLA","SPCX","GOOGL","META","MSFT","NVDA","AMZN","AAPL","AMD","IREN"];
+      // Superset of every watchlist in the repo: the board's original 10
+      // first, then the rest of index.html's TICKERS (which already contains
+      // everything in trend.html). Keep this in sync if you add a ticker on
+      // the watchlist page.
+      var TICKERS = ["TSLA","SPCX","GOOGL","META","MSFT","NVDA","AMZN","AAPL","AMD","IREN",
+        "GOOG","AVGO","MU","INTC","CAT","NFLX","CRM","NOW","PANW","DOCU",
+        "PLTR","NBIS","SOFI","BABA","WMT","FIG","COST","UBER"];
       var WORKER_URL = "https://stock-watchlist-proxy.pawan227.workers.dev/";
       // 2 min: comfortably safe on every limit involved (Alpaca Basic is
       // 200 calls/min, this uses ~0.5/min batched; Cloudflare's free tier
@@ -788,72 +783,35 @@
         );
       }
 
-      // ---- Single rotating stock row ----
-      var STOCKS_PER_PAGE = 5;
-      var STOCK_ROTATE_MS = 15 * 1000;
-      var stockPage = 0;
-      var stockRotateElapsed = 0;
-      var stockRowHovered = false;
+      // ---- Continuously scrolling stock row ----
+      var MARQUEE_PX_PER_SEC = 22;   // lower = slower
+      var marqueeSymbols = null;     // symbols the track was last built with
 
-      function stockPageCount() { return Math.max(1, Math.ceil(TICKERS.length / STOCKS_PER_PAGE)); }
+      function placeholderTile(sym) {
+        return '<div class="tile" data-symbol="' + sym + '"><div class="tile-head"><span class="tile-ticker">' + sym + '</span></div><div class="tile-error">No data</div></div>';
+      }
+      function tileFor(sym) { return lastData[sym] ? tileHtml(lastData[sym]) : placeholderTile(sym); }
 
       function render() {
-        var start = stockPage * STOCKS_PER_PAGE;
-        var html = TICKERS.slice(start, start + STOCKS_PER_PAGE).map(function (sym) {
-          var row = lastData[sym];
-          return row ? tileHtml(row) : '<div class="tile" data-symbol="' + sym + '"><div class="tile-head"><span class="tile-ticker">' + sym + '</span></div><div class="tile-error">No data</div></div>';
-        }).join("");
-        document.getElementById("grid").innerHTML = html;
-        renderStockPager();
+        var grid = document.getElementById("grid");
+        var key = TICKERS.join(",");
+        if (marqueeSymbols !== key) {
+          // First render: build the track (two identical copies for the loop).
+          var once = TICKERS.map(tileFor).join("");
+          grid.innerHTML = once + once;
+          marqueeSymbols = key;
+          var half = grid.scrollWidth / 2;
+          grid.style.setProperty("--marquee-duration", Math.max(60, Math.round(half / MARQUEE_PX_PER_SEC)) + "s");
+        } else {
+          // Later refreshes: swap each tile in place so the scroll animation
+          // keeps running instead of restarting from the first ticker.
+          TICKERS.forEach(function (sym) {
+            var html = tileFor(sym);
+            grid.querySelectorAll('.tile[data-symbol="' + sym + '"]').forEach(function (node) { node.outerHTML = html; });
+          });
+        }
         renderBreadthSummary();
       }
-
-      function renderStockPager() {
-        var pages = stockPageCount();
-        var start = stockPage * STOCKS_PER_PAGE;
-        var end = Math.min(start + STOCKS_PER_PAGE, TICKERS.length);
-        var dots = "";
-        for (var i = 0; i < pages; i++) {
-          dots += '<span class="pager-dot' + (i === stockPage ? ' active' : '') + '" onclick="goStockPage(' + i + ')"></span>';
-        }
-        document.getElementById("stockPager").innerHTML =
-          '<span>Stocks ' + (start + 1) + '&ndash;' + end + ' of ' + TICKERS.length + (stockRowHovered ? ' &middot; paused' : '') + '</span>' +
-          '<button onclick="goStockPage(stockPage - 1)">&lsaquo;</button>' + dots +
-          '<button onclick="goStockPage(stockPage + 1)">&rsaquo;</button>' +
-          '<span class="pager-progress"><span class="pager-progress-fill" id="pagerFill" style="display:block;"></span></span>';
-        updatePagerProgress();
-      }
-
-      function updatePagerProgress() {
-        var fill = document.getElementById("pagerFill");
-        if (fill) fill.style.width = Math.min(100, (stockRotateElapsed / STOCK_ROTATE_MS) * 100).toFixed(1) + "%";
-      }
-
-      // Fades the row out, swaps the page, fades back in.
-      function goStockPage(p) {
-        var pages = stockPageCount();
-        var target = ((p % pages) + pages) % pages;
-        stockRotateElapsed = 0;
-        if (target === stockPage) { renderStockPager(); return; }
-        var grid = document.getElementById("grid");
-        grid.classList.add("fading");
-        setTimeout(function () {
-          stockPage = target;
-          render();
-          grid.classList.remove("fading");
-        }, 350);
-      }
-
-      var stockRowEl = document.getElementById("stockRow");
-      stockRowEl.addEventListener("mouseenter", function () { stockRowHovered = true; renderStockPager(); });
-      stockRowEl.addEventListener("mouseleave", function () { stockRowHovered = false; renderStockPager(); });
-
-      setInterval(function () {
-        if (stockRowHovered || stockPageCount() < 2 || document.getElementById("overlay").classList.contains("open")) return;
-        stockRotateElapsed += 250;
-        if (stockRotateElapsed >= STOCK_ROTATE_MS) goStockPage(stockPage + 1);
-        else updatePagerProgress();
-      }, 250);
 
       // Overall board mood in one line — how many tiles are on the buy side
       // (Entry/Entry+), neutral (Watch), or the sell side (Exit/Exit+),
@@ -907,15 +865,6 @@
 
             lastData = {};
             rows.forEach(function (row) { lastData[row.symbol] = row; });
-
-            // With only one row visible, a signal change on the hidden page
-            // would be missed — jump to the page holding the first changed
-            // ticker so its gold glow is actually on screen.
-            var firstChanged = TICKERS.filter(function (s) { return changedSymbols[s]; })[0];
-            if (firstChanged) {
-              stockPage = Math.floor(TICKERS.indexOf(firstChanged) / STOCKS_PER_PAGE);
-              stockRotateElapsed = 0;
-            }
 
             render();
             document.getElementById("updatedLabel").textContent = "Updated " + formatUpdatedStamp();
