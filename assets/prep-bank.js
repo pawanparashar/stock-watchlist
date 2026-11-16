@@ -486,13 +486,449 @@ var PYTHON_CONCEPTS = [
   }
 ];
 
-// Interleave: two quiz items, then one concept card, repeated.
-PYTHON_BANK = (function (quiz, concepts) {
-  var out = [], ci = 0;
-  for (var i = 0; i < quiz.length; i++) {
-    out.push(quiz[i]);
-    if (i % 2 === 1 && ci < concepts.length) out.push(concepts[ci++]);
+// ===========================================================================
+// WEEK 1-2 BASICS: arrays (Python lists) and strings, from zero.
+// Level 1 = Basics (week 1), level 2 = Easy (week 2). The board's weekly
+// schedule (see PREP_WEEK_PATTERNS in board.html) mixes in harder levels
+// from week 3 onward. Items are shown in the order listed within a level.
+// ===========================================================================
+var PYTHON_BASICS = [
+  // ---------------- Level 1: lists ----------------
+  {
+    level: 1, type: "concept", topic: "list basics",
+    q: "What is a list? (Python's array)",
+    context: "A list holds items in order. Python has no separate 'array' for everyday use: a list IS the dynamic array, and it grows as you add items.",
+    points: [
+      "Create with square brackets: nums = [10, 20, 30]",
+      "Indexes start at 0; nums[-1] is the last item",
+      "len(nums) gives the number of items",
+      "Lists are mutable: nums[1] = 25 changes the item in place",
+      "Reading past the end (nums[3] here) raises IndexError"
+    ],
+    code: "nums = [10, 20, 30]\nprint(nums[0], nums[-1], len(nums))   # 10 30 3\nnums[1] = 25\nprint(nums)                            # [10, 25, 30]\nempty = []\nmixed = [1, 'two', 3.0]   # any types are allowed\nprint(len(empty), mixed)  # 0 [1, 'two', 3.0]"
+  },
+  {
+    level: 1, type: "mcq", topic: "list indexing",
+    q: "What does this print?",
+    code: "nums = [5, 10, 15, 20]\nprint(nums[1], nums[-2])",
+    options: ["10 15", "5 15", "10 20", "15 10"],
+    answer: 0,
+    explain: "Index 1 is the SECOND item (counting starts at 0), so 10. -2 counts back from the end: -1 is 20, -2 is 15."
+  },
+  {
+    level: 1, type: "mcq", topic: "IndexError",
+    q: "What happens?",
+    code: "nums = [1, 2, 3]\nprint(nums[3])",
+    options: ["3", "None", "IndexError", "0"],
+    answer: 2,
+    explain: "A 3-item list has indexes 0, 1 and 2. Index 3 doesn't exist, so Python raises IndexError: list index out of range. The last valid index is len(nums) - 1."
+  },
+  {
+    level: 1, type: "concept", topic: "adding items",
+    q: "Adding to a list: append, insert, extend",
+    context: "Three ways to add, and picking the right one matters for speed and for the result you get.",
+    points: [
+      "append(x) adds ONE item at the end, which is fast (O(1))",
+      "insert(i, x) adds at position i; it's slower because later items shift (O(n))",
+      "extend(other) adds EACH item from another list",
+      "a + b makes a NEW list and leaves a and b unchanged"
+    ],
+    code: "fruits = ['apple']\nfruits.append('banana')          # add one at the end\nfruits.insert(0, 'cherry')       # add at position 0\nfruits.extend(['kiwi', 'fig'])   # add many\nprint(fruits)  # ['cherry', 'apple', 'banana', 'kiwi', 'fig']\nboth = [1, 2] + [3]\nprint(both)    # [1, 2, 3]"
+  },
+  {
+    level: 1, type: "mcq", topic: "append vs extend",
+    q: "What does this print?",
+    code: "a = [1, 2]\na.append([3, 4])\nprint(len(a))",
+    options: ["4", "3", "2", "Error"],
+    answer: 1,
+    explain: "append adds its argument as ONE item, so the whole list [3, 4] becomes a single element: [1, 2, [3, 4]], which has length 3. extend([3, 4]) would give [1, 2, 3, 4], length 4."
+  },
+  {
+    level: 1, type: "concept", topic: "removing items",
+    q: "Removing from a list: remove, pop, del",
+    context: "Remove by VALUE with remove(); remove by POSITION with pop() or del.",
+    points: [
+      "remove(x) deletes the first item equal to x and raises ValueError if it's missing",
+      "pop() removes and RETURNS the last item; pop(i) does the same at index i",
+      "del nums[i] deletes by index without returning anything",
+      "clear() empties the whole list"
+    ],
+    code: "nums = [4, 7, 9, 7]\nnums.remove(7)        # first 7 -> [4, 9, 7]\nlast = nums.pop()     # 7 -> [4, 9]\nfirst = nums.pop(0)   # 4 -> [9]\ndel nums[0]           # -> []\nprint(nums, last, first)  # [] 7 4"
+  },
+  {
+    level: 1, type: "concept", topic: "looping",
+    q: "Looping over a list",
+    context: "for x in list visits every item. Only use indexes when you actually need the position.",
+    points: [
+      "for t in temps: is the simplest and most Pythonic loop",
+      "for i in range(len(temps)): gives you indexes when you need them",
+      "Accumulator pattern: start total = 0 and add to it inside the loop",
+      "Don't add or remove items in a list while looping over it; build a new list instead"
+    ],
+    code: "temps = [68, 72, 75]\nfor t in temps:\n    print(t)               # 68 / 72 / 75\nfor i in range(len(temps)):\n    print(i, temps[i])     # 0 68 / 1 72 / 2 75\ntotal = 0\nfor t in temps:\n    total += t\nprint(round(total / len(temps), 1))  # 71.7 (average)"
+  },
+  {
+    level: 1, type: "mcq", topic: "loop + condition",
+    q: "What does this print?",
+    code: "nums = [1, 2, 3, 4]\ntotal = 0\nfor n in nums:\n    if n % 2 == 0:\n        total += n\nprint(total)",
+    options: ["10", "6", "4", "2"],
+    answer: 1,
+    explain: "n % 2 == 0 is True only for even numbers, so the loop adds 2 + 4 = 6. % is the remainder operator."
+  },
+  {
+    level: 1, type: "concept", topic: "built-in functions",
+    q: "Built-ins that work on any list",
+    context: "Before writing a loop, check whether a built-in already does the job. They're shorter and faster.",
+    points: [
+      "len, sum, min and max work on any list of numbers",
+      "sorted(list) returns a NEW sorted list; reverse=True sorts largest first",
+      "'x in list' checks whether x is there (True / False)",
+      "list.count(x) counts how many times x appears"
+    ],
+    code: "scores = [88, 92, 79, 92]\nprint(len(scores), sum(scores))     # 4 351\nprint(min(scores), max(scores))     # 79 92\nprint(sorted(scores))               # [79, 88, 92, 92]\nprint(sorted(scores, reverse=True)) # [92, 92, 88, 79]\nprint(92 in scores, scores.count(92))  # True 2"
+  },
+  {
+    level: 1, type: "mcq", topic: "sort vs sorted",
+    q: "What does this print?",
+    code: "a = [3, 1, 2]\nb = a.sort()\nprint(a, b)",
+    options: ["[1, 2, 3] None", "[3, 1, 2] [1, 2, 3]", "[1, 2, 3] [1, 2, 3]", "Error"],
+    answer: 0,
+    explain: "a.sort() sorts the list IN PLACE and returns None, so a changes and b is None. Use b = sorted(a) when you want a new sorted list and the original kept."
+  },
+  {
+    level: 1, type: "mcq", topic: "slicing basics",
+    q: "What does this print?",
+    code: "letters = ['a', 'b', 'c', 'd', 'e']\nprint(letters[1:3])",
+    options: ["['b', 'c']", "['b', 'c', 'd']", "['a', 'b', 'c']", "['c', 'd']"],
+    answer: 0,
+    explain: "A slice [start:stop] includes start but EXCLUDES stop, so you get indexes 1 and 2. A handy rule: stop - start = number of items (3 - 1 = 2)."
+  },
+  {
+    level: 1, type: "mcq", topic: "slicing basics",
+    q: "What does this print?",
+    code: "letters = ['a', 'b', 'c', 'd', 'e']\nprint(letters[:2] + letters[3:])",
+    options: ["['a', 'b', 'd', 'e']", "['a', 'b', 'c', 'd', 'e']", "['a', 'd', 'e']", "['b', 'd', 'e']"],
+    answer: 0,
+    explain: "[:2] means 'from the start up to index 2' → ['a', 'b']. [3:] means 'from index 3 to the end' → ['d', 'e']. Together they skip 'c' at index 2, a common way to drop one item."
+  },
+  {
+    level: 1, type: "tip", topic: "range",
+    q: "range(): the numbers your loops walk through",
+    code: "print(list(range(5)))          # [0, 1, 2, 3, 4]\nprint(list(range(2, 6)))       # [2, 3, 4, 5]\nprint(list(range(10, 0, -3)))  # [10, 7, 4, 1]\nfor i in range(3):\n    print('hi', i)             # hi 0 / hi 1 / hi 2",
+    explain: "range(stop), range(start, stop) and range(start, stop, step). Like slices, stop is NOT included. A negative step counts down."
+  },
+  {
+    level: 1, type: "mcq", topic: "range",
+    q: "What does this print?",
+    code: "print(list(range(1, 10, 4)))",
+    options: ["[1, 5, 9]", "[1, 5]", "[1, 4, 7, 10]", "[4, 8]"],
+    answer: 0,
+    explain: "Start at 1 and add 4 each time: 1, 5, 9. The next value, 13, is past the stop of 10."
+  },
+  {
+    level: 1, type: "code", topic: "find max manually",
+    q: "Find the largest number in a list WITHOUT using max().",
+    code: "def largest(nums):\n    best = nums[0]            # assume the first is biggest\n    for n in nums[1:]:\n        if n > best:\n            best = n          # found a bigger one\n    return best\n\nprint(largest([3, 9, 2, 7]))  # 9",
+    explain: "Keep a 'best so far' variable and update it as you scan: one pass, O(n). Interviewers often ask for this by hand. Mention the edge case: an empty list would fail at nums[0]."
+  },
+  {
+    level: 1, type: "code", topic: "count manually",
+    q: "Count how many times a value appears, without .count().",
+    code: "def count_of(nums, target):\n    count = 0\n    for n in nums:\n        if n == target:\n            count += 1\n    return count\n\nprint(count_of([1, 2, 1, 1], 1))  # 3",
+    explain: "The counter pattern: start at 0 and add 1 every time a condition is true. The same shape works for 'how many even numbers', 'how many words longer than 5', and so on."
+  },
+  {
+    level: 1, type: "code", topic: "reverse a list",
+    q: "Reverse a list (three ways).",
+    code: "nums = [1, 2, 3, 4]\nprint(nums[::-1])           # [4, 3, 2, 1]  new list\nprint(list(reversed(nums))) # [4, 3, 2, 1]  new list\n\n# in place, with two pointers (the interview version):\nl, r = 0, len(nums) - 1\nwhile l < r:\n    nums[l], nums[r] = nums[r], nums[l]   # swap\n    l += 1\n    r -= 1\nprint(nums)                 # [4, 3, 2, 1]",
+    explain: "[::-1] is the quick answer. The two-pointer swap reverses in place with O(1) extra memory, and is the first two-pointer pattern worth learning."
+  },
+  {
+    level: 1, type: "concept", topic: "2D lists",
+    q: "Lists of lists (2D arrays / grids)",
+    context: "A grid is a list of rows, and each row is a list. Access an item with grid[row][col].",
+    points: [
+      "len(grid) is the number of rows; len(grid[0]) is the number of columns",
+      "Loop rows with for row in grid:, then cells with for x in row:",
+      "Build an empty grid with a comprehension: [[0] * cols for _ in range(rows)]",
+      "Never write [[0] * 3] * 2: every row would be the SAME list"
+    ],
+    code: "grid = [[1, 2, 3],\n        [4, 5, 6]]\nprint(grid[1][2])               # 6  (row 1, col 2)\nprint(len(grid), len(grid[0]))  # 2 3  rows, cols\nfor row in grid:\n    print(sum(row))             # 6 / 15\nblank = [[0] * 3 for _ in range(2)]\nprint(blank)                    # [[0, 0, 0], [0, 0, 0]]"
+  },
+  {
+    level: 1, type: "tip", topic: "copying lists",
+    q: "b = a does NOT copy a list",
+    code: "nums = [1, 2, 3]\nsame = nums          # just a second name for the SAME list\ncopy = nums.copy()   # a real copy (nums[:] also works)\nnums.append(4)\nprint(same)          # [1, 2, 3, 4]\nprint(copy)          # [1, 2, 3]",
+    explain: "Assignment never copies in Python; it only adds another name. Use .copy() or [:] when you need an independent list."
+  },
+  {
+    level: 1, type: "tip", topic: "empty check",
+    q: "Checking whether a list is empty",
+    code: "nums = []\nif not nums:\n    print('empty')       # the Pythonic way\nif len(nums) == 0:\n    print('also empty')  # works, but longer\nnums.append(1)\nif nums:\n    print('has items')",
+    explain: "An empty list counts as False and a non-empty list as True, so 'if not nums' reads naturally. The same rule applies to strings, dicts and sets."
+  },
+  {
+    level: 1, type: "mcq", topic: "in operator",
+    q: "What does this print?",
+    code: "print(3 in [1, 2, 3], 'a' in 'cat', [1] in [1, 2])",
+    options: ["True True False", "True True True", "True False False", "Error"],
+    answer: 0,
+    explain: "'in' checks membership: 3 is in the list, and 'a' is a substring of 'cat'. [1] is a LIST, and the list [1, 2] doesn't contain a list, only the numbers 1 and 2, so it's False."
+  },
+  // ---------------- Level 1: strings ----------------
+  {
+    level: 1, type: "concept", topic: "string basics",
+    q: "Strings: text as a sequence of characters",
+    context: "A string works like a read-only list of characters: you can index it, slice it, loop over it and use len().",
+    points: [
+      "Quotes: 'single' and \"double\" are the same thing",
+      "s[0] is the first character and s[-1] the last",
+      "Strings are IMMUTABLE: s[0] = 'J' raises TypeError",
+      "To 'change' a string, build a new one: 'J' + s[1:]"
+    ],
+    code: "name = 'Python'\nprint(name[0], name[-1], len(name))  # P n 6\nprint('th' in name)                  # True\nprint(name[0:2])                     # Py\nnew = 'J' + name[1:]\nprint(new)                           # Jython"
+  },
+  {
+    level: 1, type: "mcq", topic: "string indexing",
+    q: "What does this print?",
+    code: "s = 'hello'\nprint(s[1] + s[-1])",
+    options: ["eo", "ho", "el", "ol"],
+    answer: 0,
+    explain: "s[1] is 'e' (the second character) and s[-1] is 'o' (the last one). + joins strings together."
+  },
+  {
+    level: 1, type: "concept", topic: "string methods",
+    q: "Everyday string methods",
+    context: "Methods never change the original string; they return a NEW one. Save the result: s = s.strip().",
+    points: [
+      "strip() removes spaces from both ends (lstrip / rstrip for one side)",
+      "lower() and upper() change case; compare text case-insensitively with a.lower() == b.lower()",
+      "replace(old, new) swaps every occurrence",
+      "count(x) counts occurrences; find(x) returns the position, or -1 if missing"
+    ],
+    code: "msg = '  Hi There  '\nprint(msg.strip())           # Hi There\nprint(msg.strip().upper())   # HI THERE\nprint('a-b-c'.replace('-', '+'))  # a+b+c\nprint('banana'.count('a'))   # 3\nprint('banana'.find('n'))    # 2\nprint('banana'.find('z'))    # -1"
+  },
+  {
+    level: 1, type: "mcq", topic: "immutable strings",
+    q: "What does this print?",
+    code: "s = 'cat'\ns.upper()\nprint(s)",
+    options: ["cat", "CAT", "Cat", "None"],
+    answer: 0,
+    explain: "upper() RETURNS a new string, but the result was thrown away and s itself never changes. Write s = s.upper() to keep it."
+  },
+  {
+    level: 1, type: "concept", topic: "split & join",
+    q: "split() and join(): converting between strings and lists",
+    context: "split breaks a string into a list; join glues a list of strings back together. You'll use this pair constantly.",
+    points: [
+      "'a,b,c'.split(',') gives ['a', 'b', 'c']",
+      "split() with no argument splits on any whitespace and ignores extra spaces",
+      "join is called ON the separator: ', '.join(words)",
+      "join needs strings; convert numbers first with str(n)"
+    ],
+    code: "line = 'red,green,blue'\ncolors = line.split(',')\nprint(colors, len(colors))   # ['red', 'green', 'blue'] 3\nprint(' | '.join(colors))    # red | green | blue\nprint('the  quick fox'.split())  # ['the', 'quick', 'fox']\nprint('-'.join(str(n) for n in [1, 2, 3]))  # 1-2-3"
+  },
+  {
+    level: 1, type: "mcq", topic: "split",
+    q: "What does this print?",
+    code: "print('a b c'.split())",
+    options: ["['a', 'b', 'c']", "['a b c']", "['a', ' ', 'b', ' ', 'c']", "('a', 'b', 'c')"],
+    answer: 0,
+    explain: "split() with no argument splits on whitespace and returns a LIST of the words. Use list('abc') to split a string into single characters."
+  },
+  {
+    level: 1, type: "concept", topic: "looping strings",
+    q: "Looping over a string and building a new one",
+    context: "for ch in word visits each character. To build a result, collect pieces in a list and join them once at the end.",
+    points: [
+      "'ch in \"aeiou\"' is a quick test for a vowel",
+      "Counter pattern: vowels += 1 inside an if",
+      "Build with parts.append(...) and then ''.join(parts)",
+      "s += ch inside a loop works, but copies the string every time"
+    ],
+    code: "word = 'hello'\nvowels = 0\nfor ch in word:\n    if ch in 'aeiou':\n        vowels += 1\nprint(vowels)              # 2\nparts = []\nfor ch in word:\n    parts.append(ch.upper())\nprint(''.join(parts))      # HELLO\nprint('-'.join(word))      # h-e-l-l-o"
+  },
+  {
+    level: 1, type: "code", topic: "palindrome",
+    q: "Reverse a string, and check if a word is a palindrome.",
+    code: "print('hello'[::-1])          # olleh\n\ndef is_palindrome(s):\n    s = s.lower()             # 'Level' -> 'level'\n    return s == s[::-1]\n\nprint(is_palindrome('Level'))   # True\nprint(is_palindrome('Python'))  # False",
+    explain: "[::-1] reverses any sequence. Lower-casing first makes the check case-insensitive. Follow-up interview version: ignore spaces and punctuation, or solve it with two pointers."
+  },
+  {
+    level: 1, type: "mcq", topic: "string operators",
+    q: "What does this print?",
+    code: "print('ab' * 3 + 'c')",
+    options: ["abababc", "ab3c", "Error", "aaabbbc"],
+    answer: 0,
+    explain: "* repeats a string ('ab' * 3 = 'ababab') and + joins strings. Both also work on lists: [0] * 3 is [0, 0, 0]."
+  },
+  {
+    level: 1, type: "mcq", topic: "str + int",
+    q: "What happens?",
+    code: "age = 5\nprint('Age: ' + age)",
+    options: ["Age: 5", "Age:5", "TypeError", "None"],
+    answer: 2,
+    explain: "Python won't silently mix str and int: 'can only concatenate str (not \"int\") to str'. Fix it with 'Age: ' + str(age) or, better, f'Age: {age}'."
+  },
+  {
+    level: 1, type: "concept", topic: "f-strings",
+    q: "f-strings: the easy way to build text",
+    context: "Put f before the quotes and any expression inside {} gets filled in. It's the modern, readable way to format.",
+    points: [
+      "f'{name} scored {score}' inserts the variable values",
+      "{score:.1f} rounds to 1 decimal place; {n:,} adds thousands commas",
+      "Any expression works: f'{len(items)} items'",
+      "Use str(x) when you really need + concatenation"
+    ],
+    code: "name, score = 'Asha', 93.456\nprint(f'{name} scored {score}')      # Asha scored 93.456\nprint(f'{name} scored {score:.1f}')  # Asha scored 93.5\nprint(f'{1234567:,}')                # 1,234,567\nitems = ['a', 'b']\nprint(f'{len(items)} items')         # 2 items"
+  },
+  {
+    level: 1, type: "code", topic: "word count",
+    q: "Count the words in a sentence, and find the longest word.",
+    code: "def word_count(sentence):\n    return len(sentence.split())\n\ndef longest_word(sentence):\n    return max(sentence.split(), key=len)\n\ns = 'Python is fun to learn'\nprint(word_count(s))     # 5\nprint(longest_word(s))   # Python",
+    explain: "split() turns the sentence into a list of words, and list tools do the rest. max(..., key=len) compares by length; on a tie it keeps the first word."
+  },
+
+  // ---------------- Level 2: easy (week 2) ----------------
+  {
+    level: 2, type: "concept", topic: "list comprehension",
+    q: "List comprehensions, step by step",
+    context: "A comprehension is a for-loop that builds a list, written in one line. Learn to translate between the two forms.",
+    points: [
+      "Shape: [expression for item in list]",
+      "Add a filter: [n for n in nums if n % 2 == 1]",
+      "Read it out loud: 'n times 2, for each n in nums'",
+      "If it doesn't fit on one readable line, use a normal loop"
+    ],
+    code: "nums = [1, 2, 3, 4, 5]\n\ndoubled = []                 # loop version\nfor n in nums:\n    doubled.append(n * 2)\n\ndoubled = [n * 2 for n in nums]          # same, one line\nodds = [n for n in nums if n % 2 == 1]\nprint(doubled, odds)   # [2, 4, 6, 8, 10] [1, 3, 5]"
+  },
+  {
+    level: 2, type: "concept", topic: "lists effectively",
+    q: "Using lists effectively",
+    context: "Small habits that make list code faster and cleaner, the kind interviewers notice.",
+    points: [
+      "Build with append or a comprehension; avoid list = list + [x] in a loop (it copies every time)",
+      "Checking membership many times? Convert to a set once: O(1) lookups",
+      "Need both index and value? Use enumerate, not range(len(...))",
+      "Turning a list of values into text? Use ','.join(...) once at the end"
+    ],
+    code: "squares = [i * i for i in range(5)]      # [0, 1, 4, 9, 16]\nallowed = set(['a', 'b', 'c'])\nprint('b' in allowed)                    # True, O(1)\nfor i, v in enumerate(squares):\n    if v > 5:\n        print('first > 5 at index', i)   # first > 5 at index 3\n        break\nprint(','.join(str(x) for x in squares)) # 0,1,4,9,16"
+  },
+  {
+    level: 2, type: "concept", topic: "strings effectively",
+    q: "Using strings effectively",
+    context: "Clean the input first, then compare or parse it. Most string bugs come from stray spaces and letter case.",
+    points: [
+      "strip() and lower() before comparing user input",
+      "split() a string into parts and unpack them: user, domain = email.split('@')",
+      "startswith / endswith read better than slicing comparisons",
+      "Build long strings with ''.join(parts), not += in a loop"
+    ],
+    code: "email = '  Asha@Example.COM '\nclean = email.strip().lower()\nuser, domain = clean.split('@')\nprint(user, domain)              # asha example.com\nprint(clean.endswith('.com'))    # True\nprint(clean[:3])                 # ash\nprint('@' in clean)              # True"
+  },
+  {
+    level: 2, type: "code", topic: "remove duplicates",
+    q: "Remove duplicates from a list but KEEP the original order.",
+    code: "def dedupe(nums):\n    seen = set()\n    out = []\n    for n in nums:\n        if n not in seen:\n            seen.add(n)\n            out.append(n)\n    return out\n\nprint(dedupe([3, 1, 3, 2, 1]))   # [3, 1, 2]\nprint(list(set([3, 1, 3, 2, 1]))) # [1, 2, 3], order NOT guaranteed",
+    explain: "A set gives O(1) 'have I seen it?' checks and the list keeps the order, for O(n) overall. list(set(x)) is shorter but can reorder the items. The one-liner list(dict.fromkeys(nums)) also keeps order."
+  },
+  {
+    level: 2, type: "code", topic: "second largest",
+    q: "Find the second-largest DISTINCT number in one pass.",
+    code: "def second_largest(nums):\n    first = second = float('-inf')\n    for n in nums:\n        if n > first:\n            first, second = n, first\n        elif first > n > second:\n            second = n\n    return second\n\nprint(second_largest([4, 9, 2, 9, 7]))  # 7",
+    explain: "Track the top two as you go. The 'first > n > second' check skips duplicates of the max. One pass, O(n), versus sorting at O(n log n)."
+  },
+  {
+    level: 2, type: "code", topic: "two pointers",
+    q: "Move all zeros to the end of the list, in place, keeping the other numbers' order.",
+    code: "def move_zeros(nums):\n    write = 0                      # next slot for a non-zero\n    for n in nums:\n        if n != 0:\n            nums[write] = n\n            write += 1\n    for i in range(write, len(nums)):\n        nums[i] = 0\n    return nums\n\nprint(move_zeros([0, 1, 0, 3, 12]))  # [1, 3, 12, 0, 0]",
+    explain: "A 'write pointer' marks where the next kept item goes. This read/write two-pointer pattern also solves removing an element or deduping a sorted array in place."
+  },
+  {
+    level: 2, type: "code", topic: "running sum",
+    q: "Running (prefix) sum: each position holds the total so far.",
+    code: "def running_sum(nums):\n    out, total = [], 0\n    for n in nums:\n        total += n\n        out.append(total)\n    return out\n\nprint(running_sum([1, 2, 3, 4]))   # [1, 3, 6, 10]",
+    explain: "Prefix sums let you get the sum of any range in O(1) later: sum(i..j) = pre[j] - pre[i-1]. A building block for many array problems."
+  },
+  {
+    level: 2, type: "code", topic: "rotate list",
+    q: "Rotate a list to the right by k steps.",
+    code: "def rotate(nums, k):\n    k %= len(nums)            # k may be bigger than the length\n    return nums[-k:] + nums[:-k]\n\nprint(rotate([1, 2, 3, 4, 5], 2))   # [4, 5, 1, 2, 3]\nprint(rotate([1, 2, 3], 4))         # [3, 1, 2]",
+    explain: "Slice off the last k items and put them in front. k %= len handles k larger than the list. Follow-up: do it in place by reversing the whole list, then each part."
+  },
+  {
+    level: 2, type: "code", topic: "merge sorted",
+    q: "Merge two sorted lists into one sorted list.",
+    code: "def merge(a, b):\n    i = j = 0\n    out = []\n    while i < len(a) and j < len(b):\n        if a[i] <= b[j]:\n            out.append(a[i]); i += 1\n        else:\n            out.append(b[j]); j += 1\n    return out + a[i:] + b[j:]     # add leftovers\n\nprint(merge([1, 4, 7], [2, 3, 8]))  # [1, 2, 3, 4, 7, 8]",
+    explain: "Two pointers, always taking the smaller front item: O(len(a) + len(b)). This is the heart of merge sort and of merging sorted logs."
+  },
+  {
+    level: 2, type: "code", topic: "anagram",
+    q: "Are two words anagrams (same letters, different order)?",
+    code: "def is_anagram(a, b):\n    return sorted(a) == sorted(b)\n\nprint(is_anagram('listen', 'silent'))  # True\nprint(is_anagram('rat', 'car'))        # False\nprint(sorted('cab'))                   # ['a', 'b', 'c']",
+    explain: "sorted() on a string returns its characters as a sorted list, so equal lists mean the same letters. That's O(n log n); comparing letter counts (dict or Counter) is O(n)."
+  },
+  {
+    level: 2, type: "concept", topic: "char counting",
+    q: "Counting characters with a dict",
+    context: "'How many of each?' is one of the most common string tasks, and dict.get(key, 0) makes it a one-liner inside the loop.",
+    points: [
+      "counts.get(ch, 0) returns 0 the first time a character is seen",
+      "Loop over counts.items() to read the results",
+      "Find the most frequent character with max(counts, key=counts.get)",
+      "Later you'll swap all this for collections.Counter"
+    ],
+    code: "word = 'banana'\ncounts = {}\nfor ch in word:\n    counts[ch] = counts.get(ch, 0) + 1\nprint(counts)                     # {'b': 1, 'a': 3, 'n': 2}\nprint(max(counts, key=counts.get))  # a"
+  },
+  {
+    level: 2, type: "code", topic: "word tricks",
+    q: "Reverse the word order, and capitalise each word.",
+    code: "s = 'hello big world'\nprint(' '.join(s.split()[::-1]))                     # world big hello\nprint(' '.join(w.capitalize() for w in s.split()))   # Hello Big World\nprint(s.title())                                     # Hello Big World",
+    explain: "split → change the list → join is the universal recipe for word-level string problems. title() is the built-in shortcut for capitalising each word."
+  },
+  {
+    level: 2, type: "concept", topic: "ord & chr",
+    q: "Characters as numbers: ord() and chr()",
+    context: "Every character has a number code. ord('a') is 97. Use it for letter positions, shifts and alphabet-sized counting arrays.",
+    points: [
+      "ord(ch) turns a character into a number; chr(n) turns it back",
+      "ord(ch) - ord('a') gives a letter's position from 0 to 25",
+      "A 26-slot list [0] * 26 can count lowercase letters",
+      "isalpha, isdigit, isupper and islower check the type of a character"
+    ],
+    code: "print(ord('a'), chr(98))       # 97 b\nprint(ord('c') - ord('a'))     # 2 (letter position)\nshifted = ''.join(chr((ord(c) - 97 + 1) % 26 + 97) for c in 'xyz')\nprint(shifted)                 # yza (Caesar shift by 1)\nprint('a1'.isalnum(), 'A'.isupper())  # True True"
+  },
+  {
+    level: 2, type: "mcq", topic: "slice with step",
+    q: "What does this print?",
+    code: "print('abcdef'[1:5:2])",
+    options: ["bd", "bdf", "ace", "bcde"],
+    answer: 0,
+    explain: "Start at index 1 ('b'), step 2, and stop before index 5: indexes 1 and 3 → 'bd'. The step is the third number in [start:stop:step]."
+  },
+  {
+    level: 2, type: "mcq", topic: "enumerate",
+    q: "What does this print?",
+    code: "for i, ch in enumerate('ab', start=1):\n    print(i, ch, end=' ')",
+    options: ["1 a 2 b ", "0 a 1 b ", "a 1 b 2 ", "Error"],
+    answer: 0,
+    explain: "enumerate gives (index, item) pairs, and start=1 makes the counting begin at 1. end=' ' prints a space instead of a newline."
   }
-  while (ci < concepts.length) out.push(concepts[ci++]);
-  return out;
-})(PYTHON_BANK, PYTHON_CONCEPTS);
+];
+
+// Difficulty for the original quiz/concept items (keyed by topic):
+// 2 = easy, 3 = medium, 4 = advanced. Anything unlisted defaults to 3.
+var PREP_LEVEL_BY_TOPIC = {
+  "Slicing": 2, "enumerate": 2, "zip": 2, "is vs ==": 2, "List comprehension": 2,
+  "Integer division": 2, "f-strings": 2, "Sets": 2, "Truthiness": 2,
+  "Strings are immutable": 2, "Dict ordering & get": 2, "Tuples": 2, "join & split": 2,
+  "list": 2, "list slicing": 2, "dict": 2, "set": 2, "str": 2,
+  "Sliding window": 4, "Closures": 4, "Heap": 4, "Merge intervals": 4, "BFS": 4,
+  "Decorators": 4, "Dynamic programming": 4, "Class vs instance attrs": 4,
+  "heapq": 4, "dataclass": 4, "itertools": 4, "recursion": 4
+};
+
+PYTHON_BANK = PYTHON_BASICS.concat(PYTHON_BANK, PYTHON_CONCEPTS).map(function (it) {
+  if (!it.level) it.level = PREP_LEVEL_BY_TOPIC[it.topic] || 3;
+  return it;
+});
