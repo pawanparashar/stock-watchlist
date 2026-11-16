@@ -418,7 +418,7 @@
       <div class="flash-ticker" id="flashTicker"></div>
 
       <div class="board-footer">
-        Tap a tile for the full breakdown &middot; prices refresh every 2 minutes, all watchlist stocks scroll continuously (hover to pause) &middot; interview questions change every 10 minutes, answers reveal at the halfway mark &middot; gold glow = signal changed since last poll
+        Tap a tile for the full breakdown &middot; prices refresh every 10 minutes, all watchlist stocks scroll continuously (hover to pause) &middot; interview questions change every 10 minutes, answers reveal at the halfway mark &middot; gold glow = signal changed since last poll
       </div>
     </div>
 
@@ -443,7 +443,9 @@
       // TTL for these endpoints was shortened to match (see
       // BOARD_CACHE_TTL_SECONDS in news-worker/worker.js) so refreshing
       // faster actually gets fresher data, not just a cache hit.
-      var REFRESH_MS = 2 * 60 * 1000;
+      // Bumped to 10 min (from 2) per request — the board now shows all 28
+      // watchlist tickers, and 10 min is plenty for a swing-trading view.
+      var REFRESH_MS = 10 * 60 * 1000;
 
       // Both tickers run on their own, much slower interval than the price
       // data — see the itemsChanged-style guard in loadFlashNews/
@@ -886,7 +888,7 @@
         countdownSeconds = REFRESH_MS / 1000;
       }
 
-      // Price tiles + macro strip (S&P and the rest) refresh every 2 min —
+      // Price tiles + macro strip (S&P and the rest) refresh every 10 min —
       // the two news tickers deliberately do NOT run on this cycle. Both
       // tickers fully replace their track element on every render, which
       // resets the CSS scroll animation to 0% — tying that to a 2-minute
